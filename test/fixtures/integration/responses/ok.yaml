@@ -1,0 +1,9 @@
+description: ok
+content:
+  application/json:
+    schema:
+      type: object
+    examples:
+      fromResponse:
+        value:
+          $ref: ../examples/item.yaml

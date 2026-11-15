@@ -1,0 +1,45 @@
+{
+  "name": "@ansanloms/redocly-plugins",
+  "version": "0.1.0",
+  "description": "Redocly CLI plugin bundling a preprocessor and rules",
+  "keywords": [
+    "openapi",
+    "preprocessor",
+    "redocly"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ansanloms/redocly-plugins.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
+    "compile": "npm run clean && tsc",
+    "check": "tsc --noEmit",
+    "test": "node --test '*.test.ts' 'rules/*.test.ts'",
+    "lint": "oxlint && oxfmt --check",
+    "fix": "oxlint --fix && oxfmt"
+  },
+  "devDependencies": {
+    "@redocly/openapi-core": "2.76.0",
+    "@types/node": "26.6.6",
+    "oxfmt": "0.77.0",
+    "oxlint": "1.92.0",
+    "typescript": "7.0.2"
+  },
+  "peerDependencies": {
+    "@redocly/openapi-core": ">=2.0.0"
+  }
+}

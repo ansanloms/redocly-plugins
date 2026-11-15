@@ -1,0 +1,14 @@
+json:
+  $ref: ./data.json
+hash:
+  $ref: ./leaf.yaml#/leaf
+parent:
+  $ref: ../data.json
+hidden:
+  $ref: ./.hidden/x.json
+cycle:
+  $ref: ./rewrite.yaml
+local:
+  $ref: "#/foo"
+url:
+  $ref: https://example.com/a.yaml

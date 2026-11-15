@@ -1,0 +1,3 @@
+id: 1
+nested:
+  $ref: ./sub/child.yaml

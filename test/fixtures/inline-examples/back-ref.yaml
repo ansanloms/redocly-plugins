@@ -1,0 +1,2 @@
+back:
+  $ref: ./example-self.yaml

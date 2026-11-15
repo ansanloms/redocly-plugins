@@ -1,4 +1,0 @@
-value:
-  id: 1
-  nested:
-    $ref: ./nested/child.yaml

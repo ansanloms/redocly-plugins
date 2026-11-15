@@ -1,0 +1,2 @@
+next:
+  $ref: ./cycle-a.yaml

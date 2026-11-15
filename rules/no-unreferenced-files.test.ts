@@ -139,6 +139,23 @@ test("別名ファイルが循環していても止まる", () => {
   assert.deepEqual(reports, []);
 });
 
+test("複数の別名ファイルが同じ連鎖に合流しても連鎖上のファイルを報告しない", () => {
+  const reports = run(
+    {
+      "components/schemas/A.yaml": "$ref: ./C.yaml\n",
+      "components/schemas/B.yaml": "$ref: ./C.yaml\n",
+      "components/schemas/C.yaml": "$ref: ./D.yaml\n",
+      "components/schemas/D.yaml": "type: string\n",
+    },
+    [
+      { $ref: "./components/schemas/A.yaml", end: "components/schemas/D.yaml" },
+      { $ref: "./components/schemas/B.yaml", end: "components/schemas/D.yaml" },
+    ],
+    dirs,
+  );
+  assert.deepEqual(reports, []);
+});
+
 test("名前が . で始まるファイルとディレクトリは対象にしない", () => {
   const reports = run(
     {

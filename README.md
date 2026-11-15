@@ -47,11 +47,17 @@ rules:
 
 ### `inline-examples`
 
-OpenAPI の `examples` 配下にある `$ref: *.yaml` を、bundle 時にインライン展開する oas3 preprocessor。
+Example オブジェクトの `value` の中にあるファイル参照を、bundle 時にインライン展開する oas3 preprocessor。
 
-oas3 の `Operation` の `requestBody` / `responses` を走査し、`examples` の値に含まれる
-`$ref: *.yaml` を再帰的に解決して内容をインライン展開する。`$ref` 先の YAML は
-`node:fs` で読み込む。
+oas3 の `Example` を訪問し、`value` の中を再帰的に歩いて `$ref` を展開する。インラインの MediaType・Parameter の examples、`$ref` で取り込んだ response / requestBody の examples、`components.examples` のいずれでも動く。`$ref` 先の YAML は `node:fs` で読み込み、`@redocly/openapi-core` の `parseYaml` でパースする。
+
+- 展開するのは、`#` を含まない・URL でない・絶対パスでない、拡張子が `.yaml` または `.yml` (小文字) の `$ref` だけ。参照先は参照元のファイルのディレクトリからの相対パスで解決し、参照先の中の `$ref` も参照先のファイルのディレクトリを基準に再帰的に展開する。
+- 展開しないもの: URL・絶対パス・`#` を含む参照・`.yaml` / `.yml` 以外 (`.json` 等) の `$ref` は、そのまま残す。スキーマの `properties.examples` や JSON Schema の `examples` は Example オブジェクトではないので対象外。
+- `{ $ref: ./x.yaml }` だけのオブジェクトは、参照先の値 (配列・スカラー・null を含む) でそのまま置き換える。空のファイルは `null` になる。
+- `$ref` と同じ階層に他のキーがある場合は、参照先がオブジェクトのときだけ合成する。キーの並びは元のオブジェクトの順で、`$ref` の位置に参照先のキーが入る。同名のキーは、`$ref` の前後どちらに書いても兄弟のキーが勝つ。参照先がオブジェクトでなければ報告し、展開しない。
+- 循環参照、ファイルの読み込み失敗 (ファイルが無い・ディレクトリ・YAML の文法エラー・複数ドキュメント) は、`value` の位置に報告し、その `$ref` を展開せずに残す。報告には `$ref` の文字列・参照元と参照先のファイルを含め、パスは Example のファイルのディレクトリからの相対パスで示す。`redocly.yaml` で `error` (または `on`) にすれば lint と bundle が失敗する。
+- 取り込んだファイルの中に展開されずに残る相対パスの `$ref` (`.json` や `#` 付きの参照、循環・読み込み失敗で残したもの) は、bundle 後も正しいファイルを指すよう、Example のファイルのディレクトリを基準にしたパスへ書き直す。URL・絶対パス・`#` で始まる参照と、Example の `value` に直接書いた参照は書き直さない。
+- Example オブジェクトそのものが `$ref` の場合 (`examples: { a: { $ref: ./a.yaml } }`) は Redocly が解決するため、本 preprocessor の対象外。
 
 ## rule
 
@@ -79,6 +85,7 @@ root ファイルと同じディレクトリの `examples/` 配下のファイ�
 
 - 対象は `.yaml`・`.yml` のみ。それ以外は無視する。
 - 許可する配置は `examples/<スキーマ名>/<ファイル名>.yaml` (深さ 2) のみ。`<スキーマ名>` は `components.schemas` に登録済みの名前。
+- 名前が `.` で始まるファイルとディレクトリ (配下を含む) は検査しない。
 - `examples` 直下への配置、登録済みスキーマ名でないディレクトリ名、`<スキーマ名>/` の下のサブディレクトリを報告する。
 
 ### `no-unreferenced-files`
@@ -120,9 +127,9 @@ plugins:
 ## 動作環境
 
 > [!NOTE]
-> Redocly CLI 2.75.0 で動作を確認している。Redocly CLI 2.x は Node 20.19 以上または 22.12 以上が必要。
+> Redocly CLI 2.75.0 で動作を確認している。Redocly CLI 2.75.0 の `engines` は `>=22.12.0 || >=20.19.0 <21.0.0` で、Node 20.19 以上 21 未満、または 22.12 以上が必要。
 
-本パッケージは `@redocly/openapi-core` を optional な peerDependency として宣言している。TypeScript から型を参照する場合は `@redocly/openapi-core` を devDependencies に入れる。
+本パッケージは `@redocly/openapi-core` を必須の peerDependency (`>=2.0.0`) として宣言している。`@redocly/openapi-core` がインストールされていない場合は、利用側の devDependencies に追加する。
 
 ## 開発
 

@@ -1,25 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
-import { parse } from "yaml";
-/** `dir` 配下のファイルを列挙する。名前が `.` で始まるファイルとディレクトリ (配下を含む) は除く。 */
-const listFiles = (dir) => fs
-    .readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((v) => v.isFile())
-    .map((v) => path.join(v.parentPath, v.name))
-    .filter((v) => !path
-    .relative(dir, v)
-    .split(path.sep)
-    .some((s) => s.startsWith(".")));
+import { parseYaml } from "@redocly/openapi-core";
+import { isYaml, listFiles } from "./files.js";
 /**
  * 別名ファイル (`$ref: ./Next.yaml` だけを持つ YAML) なら、その参照先の絶対パスを返す。
  * 別名ファイルでない、読めない、パースできない場合は undefined。
  */
 const aliasTarget = (file) => {
-    if (!/\.ya?ml$/.test(file)) {
+    if (!isYaml(file)) {
         return undefined;
     }
     try {
-        const value = parse(fs.readFileSync(file, "utf8"));
+        const value = parseYaml(fs.readFileSync(file, "utf8"));
         if (typeof value !== "object" || value === null) {
             return undefined;
         }
@@ -35,14 +27,21 @@ const aliasTarget = (file) => {
         return undefined;
     }
 };
-/** 参照済みのファイルから別名ファイルの連鎖を辿り、経路上のファイルも参照済みに加える。 */
-const expandAliases = (referenced) => {
-    const queue = [...referenced];
-    for (const file of queue) {
-        const next = aliasTarget(file);
-        if (next && !referenced.has(next)) {
+/** 別名の起点から別名ファイルの連鎖を辿り、経路上のファイルも参照済みに加える。循環では止まる。 */
+const expandAliases = (starts, referenced) => {
+    /** ファイルごとの `aliasTarget` の結果。合流する連鎖の共通部分を読み直さない。 */
+    const targets = new Map();
+    const targetOf = (file) => {
+        if (!targets.has(file)) {
+            targets.set(file, aliasTarget(file));
+        }
+        return targets.get(file);
+    };
+    for (const start of starts) {
+        const seen = new Set([start]);
+        for (let next = targetOf(start); next && !seen.has(next); next = targetOf(next)) {
+            seen.add(next);
             referenced.add(next);
-            queue.push(next);
         }
     }
 };
@@ -58,8 +57,9 @@ const expandAliases = (referenced) => {
  * - `$ref` の文字列から求めた参照先。`resolve()` は別名ファイル (`$ref: ./Other.yaml` だけを持つファイル) の連鎖を
  *   終点まで辿って終点しか返さないため、終点だけでは経路上の別名ファイルが未参照に見えてしまう。
  * - `resolve()` の結果 (連鎖の終点)。
- * - 上の 2 つで得た参照先のうち別名ファイルを実際に読み、その `$ref` を辿った経路上のファイル。
- *   別名が 2 段以上続くと、`ref` の訪問は先頭の別名ファイルと終点だけで、途中の別名ファイルはどちらにも現れない。
+ * - 別名ファイルの可能性があるもの (終点が得られない、または直接の参照先と異なるもの) だけを `Root.leave` で実際に読み、
+ *   その `$ref` を辿った経路上のファイル。別名が 2 段以上続くと、`ref` の訪問は先頭の別名ファイルと終点だけで、
+ *   途中の別名ファイルはどちらにも現れない。
  *
  * オプション `dirs` は root ファイルのあるディレクトリからの相対パス。未指定なら何も検査しない。
  * 指定したディレクトリが存在しない (またはディレクトリでない) 場合は、その旨を報告する。
@@ -69,16 +69,24 @@ const expandAliases = (referenced) => {
 export const NoUnreferencedFiles = (opts = {}) => {
     const dirs = opts.dirs ?? [];
     const referenced = new Set();
+    /** 別名ファイルの可能性がある参照先 (連鎖を辿る起点)。 */
+    const aliasStarts = new Set();
     return {
         ref: {
             leave: (ref, { location, resolve }) => {
                 const target = ref.$ref.split("#")[0];
-                if (target) {
-                    referenced.add(path.resolve(path.dirname(location.source.absoluteRef), target));
+                const direct = target
+                    ? path.resolve(path.dirname(location.source.absoluteRef), target)
+                    : undefined;
+                if (direct) {
+                    referenced.add(direct);
                 }
                 const end = resolve(ref).location?.source.absoluteRef;
                 if (end) {
                     referenced.add(end);
+                }
+                if (direct && direct !== end) {
+                    aliasStarts.add(direct);
                 }
             },
         },
@@ -86,7 +94,7 @@ export const NoUnreferencedFiles = (opts = {}) => {
             leave: (_target, ctx) => {
                 const root = ctx.location.source.absoluteRef;
                 const base = path.dirname(root);
-                expandAliases(referenced);
+                expandAliases(aliasStarts, referenced);
                 for (const d of dirs) {
                     const dir = path.join(base, d);
                     if (!fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory()) {
@@ -96,7 +104,8 @@ export const NoUnreferencedFiles = (opts = {}) => {
                         });
                         continue;
                     }
-                    for (const file of listFiles(dir)) {
+                    for (const name of listFiles(dir)) {
+                        const file = path.join(dir, name);
                         if (file === root || referenced.has(file)) {
                             continue;
                         }

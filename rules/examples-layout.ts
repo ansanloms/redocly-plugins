@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { Oas3Rule } from "@redocly/openapi-core";
 
-const isYaml = (entry: string): boolean => /\.ya?ml$/.test(entry);
+import { isYaml, listFiles } from "./files.ts";
 
 export type ExampleLayoutViolation = {
   /** 違反したファイルの examples/ からの相対パス。 */
@@ -15,6 +15,7 @@ export type ExampleLayoutViolation = {
  * examples/ 配下のファイル配置の違反を返す。
  *
  * - 対象は `.yaml`・`.yml` のみ。それ以外 (PDF 等) は無視する。
+ * - 名前が `.` で始まるファイルとディレクトリ (配下を含む) は、呼び出し側 (`listFiles`) が列挙から除く。
  * - 配置は `<Schema>/<File>.yaml` (深さ 2) のみ許可する。`<Schema>` は登録済みスキーマ名。
  * - 1 ファイルに複数の問題があれば問題ごとに 1 件返す。
  *
@@ -57,12 +58,6 @@ export const findExampleLayoutViolations = (
 
   return violations;
 };
-
-const listFiles = (dir: string): string[] =>
-  fs
-    .readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((v) => v.isFile())
-    .map((v) => path.relative(dir, path.join(v.parentPath, v.name)).split(path.sep).join("/"));
 
 export const ExamplesLayout: Oas3Rule = () => {
   const schemaNames = new Set<string>();

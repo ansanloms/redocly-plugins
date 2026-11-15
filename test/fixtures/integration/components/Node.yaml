@@ -1,0 +1,7 @@
+type: object
+properties:
+  examples:
+    type: object
+    properties:
+      self:
+        $ref: ./Node.yaml

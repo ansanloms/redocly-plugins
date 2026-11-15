@@ -32,9 +32,6 @@
     "lint": "oxlint && oxfmt --check",
     "fix": "oxlint --fix && oxfmt"
   },
-  "dependencies": {
-    "yaml": "2.9.1"
-  },
   "devDependencies": {
     "@redocly/openapi-core": "2.76.0",
     "@types/node": "26.6.6",
@@ -44,10 +41,5 @@
   },
   "peerDependencies": {
     "@redocly/openapi-core": ">=2.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@redocly/openapi-core": {
-      "optional": true
-    }
   }
 }

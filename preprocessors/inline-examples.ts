@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import { parseYaml, type Oas3Preprocessor } from "@redocly/openapi-core";
@@ -22,6 +22,15 @@ const isExpandableRef = (ref: string): boolean => isRelativeFileRef(ref) && isYa
 /** 落とす参照か。`#` を含まない、URL でない、絶対パスでない、拡張子が `.yaml`・`.yml` でないもの。 */
 const isDroppableRef = (ref: string): boolean => isRelativeFileRef(ref) && !isYamlExt(ref);
 
+/** 通常ファイルとして存在するか。stat の失敗は存在しない扱い。 */
+const isFile = (file: string): boolean => {
+  try {
+    return statSync(file).isFile();
+  } catch {
+    return false;
+  }
+};
+
 const errorMessage = (e: unknown): string =>
   (e instanceof Error ? e.message : String(e)).split("\n")[0]!;
 
@@ -32,12 +41,14 @@ const errorMessage = (e: unknown): string =>
  *   `.yaml`・`.yml` への相対パスだけ。参照先は参照元のファイルのディレクトリを基準に解決し、
  *   参照先の中の `$ref` も参照先のファイルのディレクトリを基準に再帰的に展開する。
  * - `#` を含まない・URL でない・絶対パスでない相対パスで、拡張子が `.yaml`・`.yml` でない `$ref` (`.pdf`・`.json` 等) は、
- *   Redocly は `value` の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため、`$ref` キーを除く。兄弟のキーとその順序は残し、
+ *   Redocly は `value` の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため、
+ *   参照先が通常ファイルとして在れば `$ref` キーを除く。兄弟のキーとその順序は残し、
  *   `$ref` だけのオブジェクトは `{}` になる。報告はしない。参照先のファイルの中に書かれた参照も同じ。
+ *   参照先が無ければ (ディレクトリ・stat の失敗を含む) `value` の位置に報告し、`$ref` を残す。
  * - それ以外の `$ref` (URL・絶対パス・`#` を含む参照) は展開せず、そのまま残す。
  * - `$ref` だけのオブジェクトは参照先の値 (配列・スカラーを含む) で置き換える。
  *   兄弟のキーがあるときは参照先 (オブジェクトのみ) と合成し、同名のキーは兄弟のキーが勝つ。
- * - 循環参照・読み込み失敗・兄弟のキーがあるのに参照先がオブジェクトでない場合は、
+ * - 循環参照・読み込み失敗・非 YAML の参照先が無い場合・兄弟のキーがあるのに参照先がオブジェクトでない場合は、
  *   `value` の位置に報告し、その `$ref` は展開しない。報告には `$ref` の文字列・参照元と参照先のファイルを含め、
  *   パスは Example のファイルのディレクトリからの相対パスで示す。
  * - 参照先のファイルの中に展開せず残る相対パスの `$ref` は、Example のファイルのディレクトリを基準にしたパスへ書き直す
@@ -99,10 +110,11 @@ export const InlineExamples: Oas3Preprocessor = () => {
     /** 報告に使うパス。Example のディレクトリからの相対パス。 */
     const show = (file: string): string => relative(exampleDir, file).split(sep).join("/");
 
-    const plain = (): unknown =>
+    /** `$ref` を残す (`drop` が true なら除く)。兄弟のキーは展開して残す。 */
+    const plain = (drop = false): unknown =>
       Object.fromEntries(
         Object.entries(value)
-          .filter(([k, v]) => !(k === "$ref" && typeof v === "string" && isDroppableRef(v)))
+          .filter(([k]) => !(drop && k === "$ref"))
           .map(([k, v]) => [
             k,
             k === "$ref" && typeof v === "string"
@@ -112,12 +124,24 @@ export const InlineExamples: Oas3Preprocessor = () => {
       );
 
     const ref = value.$ref;
-    if (typeof ref !== "string" || !isExpandableRef(ref)) {
+    if (typeof ref !== "string") {
       return plain();
     }
 
     const file = resolve(dirname(from), ref);
     const where = `$ref: ${ref}、参照元: ${show(from)}、参照先: ${show(file)}`;
+
+    if (isDroppableRef(ref)) {
+      if (isFile(file)) {
+        return plain(true);
+      }
+      problems.push(`参照先のファイルがありません (${where})。`);
+      return plain();
+    }
+    if (!isExpandableRef(ref)) {
+      return plain();
+    }
+
     if (chain.includes(file)) {
       problems.push(
         `参照が循環しています (${where})。ファイルの連鎖: ${[...chain, file].map(show).join(" -> ")}。`,

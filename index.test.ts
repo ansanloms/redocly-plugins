@@ -68,6 +68,17 @@ test("兄弟のキーが勝ち、$ref の前後どちらに書いても同じ値
   assert.deepEqual(Object.keys(after as object), ["a", "c", "b", "d"]);
 });
 
+test("兄弟のキーとの合成でも、参照先の中の実在する非 YAML の相対パスの $ref は落とし、兄弟のキーが勝つ。報告はしない", () => {
+  const { node, reports } = run({ b: "sibling", $ref: "./drop-in-base.yaml" });
+  assert.deepEqual(node.value, {
+    b: "sibling",
+    a: "from-ref",
+    doc: {},
+    nested: { list: [{ keep: 1 }] },
+  });
+  assert.deepEqual(reports, []);
+});
+
 test("兄弟のキーがあり参照先がオブジェクトでなければ、報告して $ref を残す", () => {
   const { node, reports } = run({ $ref: "./scalar.yaml", other: { $ref: "./sub/leaf.yaml" } });
   assert.equal(reports.length, 1);
@@ -105,19 +116,20 @@ test("報告のメッセージに $ref・参照元・参照先を Example のデ
   );
 });
 
-test("参照先のファイルの中に残る相対パスの $ref は Example のディレクトリ基準に書き直し、# 始まり・URL は変えない", () => {
+test("参照先のファイルの中の実在する非 YAML の相対パスの $ref は落とし、不在で残る $ref は Example のディレクトリ基準に書き直して報告する (# 始まり・URL は変えない)", () => {
   const { node, reports } = run({ $ref: "./sub/rewrite.yaml" });
   assert.deepEqual(node.value, {
     json: { $ref: "./sub/data.json" },
     hash: { $ref: "./sub/leaf.yaml#/leaf" },
-    parent: { $ref: "./data.json" },
+    parent: {},
     hidden: { $ref: "./sub/.hidden/x.json" },
     cycle: { $ref: "./sub/rewrite.yaml" },
     local: { $ref: "#/foo" },
     url: { $ref: "https://example.com/a.yaml" },
   });
-  assert.equal(reports.length, 1);
-  assert.match(reports[0]!.message, /循環/);
+  assert.equal(reports.length, 3);
+  assert.equal(reports.filter((r) => /循環/.test(r.message)).length, 1);
+  assert.equal(reports.filter((r) => /参照先のファイルがありません/.test(r.message)).length, 2);
 });
 
 test("参照先のファイルから Example のファイルへ戻る参照は、最初の 1 回で循環として報告する", () => {
@@ -169,16 +181,97 @@ test("存在しないファイル・パースできないファイルは報告�
   }
 });
 
-test("URL・絶対パス・# を含む参照・.json は報告せずそのまま残す", () => {
+test("URL・絶対パス・# を含む参照は報告せずそのまま残す", () => {
   const value = {
     url: { $ref: "https://example.com/a.yaml" },
     abs: { $ref: "/etc/a.yaml" },
     hash: { $ref: "./base.yaml#/a" },
-    json: { $ref: "./a.json" },
   };
   const { node, reports } = run(structuredClone(value));
   assert.deepEqual(node.value, value);
   assert.deepEqual(reports, []);
+});
+
+test("実在する展開できない相対ファイル参照は $ref キーだけを除き、兄弟のキーと順序は保つ。報告はしない", () => {
+  for (const input of [
+    { $ref: "./manual.pdf", type: "string", format: "binary" },
+    { type: "string", $ref: "./manual.pdf", format: "binary" },
+    { type: "string", format: "binary", $ref: "./manual.pdf" },
+  ]) {
+    const { node, reports } = run(input);
+    assert.deepEqual(node.value, { type: "string", format: "binary" });
+    assert.deepEqual(Object.keys(node.value as object), ["type", "format"]);
+    assert.deepEqual(reports, []);
+  }
+});
+
+test("$ref だけの実在する非 YAML の相対パスは {} になる", () => {
+  const { node, reports } = run({ $ref: "./data.json" });
+  assert.deepEqual(node.value, {});
+  assert.deepEqual(reports, []);
+});
+
+test("配列の要素とネストしたオブジェクトの中の実在する非 YAML の相対パスの $ref も落とす", () => {
+  const { node, reports } = run({
+    list: [{ $ref: "./data.json" }, { keep: 1, $ref: "./manual.pdf" }],
+    nested: { deep: { $ref: "./data.json", name: "x" } },
+  });
+  assert.deepEqual(node.value, {
+    list: [{}, { keep: 1 }],
+    nested: { deep: { name: "x" } },
+  });
+  assert.deepEqual(reports, []);
+});
+
+test("存在しない非 YAML の相対参照は報告して $ref を残す。報告に $ref・参照元・参照先を含める", () => {
+  const { node, reports } = run({ $ref: "./no-such.pdf" });
+  assert.deepEqual(node.value, { $ref: "./no-such.pdf" });
+  assert.equal(reports.length, 1);
+  assert.deepEqual(reports[0]!.location, { pointer: ["value"] });
+  assert.equal(
+    reports[0]!.message,
+    "参照先のファイルがありません ($ref: ./no-such.pdf、参照元: example.yaml、参照先: no-such.pdf)。",
+  );
+
+  const nested = run({ $ref: "./sub/rewrite.yaml" });
+  assert.ok(
+    nested.reports.some(
+      (r) =>
+        r.message ===
+        "参照先のファイルがありません ($ref: ./data.json、参照元: sub/rewrite.yaml、参照先: sub/data.json)。",
+    ),
+  );
+});
+
+test("ディレクトリを指す参照は報告して残す", () => {
+  const { node, reports } = run({ $ref: "./sub" });
+  assert.deepEqual(node.value, { $ref: "./sub" });
+  assert.equal(reports.length, 1);
+  assert.match(reports[0]!.message, /参照先のファイルがありません/);
+});
+
+test("同じ不在の参照を複数箇所に書いても報告は 1 件にまとまる", () => {
+  const { node, reports } = run([
+    { $ref: "./no-such.pdf" },
+    { k: { $ref: "./no-such.pdf", a: 1 } },
+  ]);
+  assert.equal(reports.length, 1);
+  assert.deepEqual(node.value, [{ $ref: "./no-such.pdf" }, { k: { $ref: "./no-such.pdf", a: 1 } }]);
+});
+
+test("# を含む非 YAML の参照は存在確認せず報告なしで残す", () => {
+  const { node, reports } = run({ $ref: "./a.json#/x" });
+  assert.deepEqual(node.value, { $ref: "./a.json#/x" });
+  assert.deepEqual(reports, []);
+});
+
+test("拡張子の無い相対パスと大文字の拡張子 (./A.YAML) は展開対象ではなく、不在なので報告して残す", () => {
+  const { node, reports } = run({
+    noExt: { $ref: "./data" },
+    upper: { $ref: "./A.YAML" },
+  });
+  assert.deepEqual(node.value, { noExt: { $ref: "./data" }, upper: { $ref: "./A.YAML" } });
+  assert.equal(reports.length, 2);
 });
 
 test("value が無い・スカラーの Example では何も起きない", () => {

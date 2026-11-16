@@ -22,7 +22,7 @@ preprocessor も rule も、`redocly.yaml` で有効化したものだけが動�
 インストール:
 
 ```sh
-npm install -D github:ansanloms/redocly-plugins#0.1.0
+npm install -D github:ansanloms/redocly-plugins#0.2.0
 ```
 
 `redocly.yaml` の `plugins:` にパッケージ名を書いて参照する。Redocly CLI の plugin ローダは、設定ファイルからの相対パスにファイルが無ければパッケージ名として node_modules から解決する。
@@ -52,11 +52,12 @@ Example オブジェクトの `value` の中にあるファイル参照を、bun
 oas3 の `Example` を訪問し、`value` の中を再帰的に歩いて `$ref` を展開する。インラインの MediaType・Parameter の examples、`$ref` で取り込んだ response / requestBody の examples、`components.examples` のいずれでも動く。`$ref` 先の YAML は `node:fs` で読み込み、`@redocly/openapi-core` の `parseYaml` でパースする。
 
 - 展開するのは、`#` を含まない・URL でない・絶対パスでない、拡張子が `.yaml` または `.yml` (小文字) の `$ref` だけ。参照先は参照元のファイルのディレクトリからの相対パスで解決し、参照先の中の `$ref` も参照先のファイルのディレクトリを基準に再帰的に展開する。
-- 展開しないもの: URL・絶対パス・`#` を含む参照・`.yaml` / `.yml` 以外 (`.json` 等) の `$ref` は、そのまま残す。スキーマの `properties.examples` や JSON Schema の `examples` は Example オブジェクトではないので対象外。
+- 展開しないもの: URL・絶対パス・`#` を含む参照の `$ref` は、そのまま残す。スキーマの `properties.examples` や JSON Schema の `examples` は Example オブジェクトではないので対象外。
+- `#` を含まない・URL でない・絶対パスでない相対パスで、拡張子が `.yaml` / `.yml` 以外 (`.pdf`・`.json` 等) の `$ref` は、`$ref` キーを除く。兄弟のキーは残り、`$ref` だけのオブジェクトは `{}` になる。報告はしない。Redocly は `value` の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため。参照先のファイルの中に書かれたものも同じ。
 - `{ $ref: ./x.yaml }` だけのオブジェクトは、参照先の値 (配列・スカラー・null を含む) でそのまま置き換える。空のファイルは `null` になる。
 - `$ref` と同じ階層に他のキーがある場合は、参照先がオブジェクトのときだけ合成する。キーの並びは元のオブジェクトの順で、`$ref` の位置に参照先のキーが入る。同名のキーは、`$ref` の前後どちらに書いても兄弟のキーが勝つ。参照先がオブジェクトでなければ報告し、展開しない。
 - 循環参照、ファイルの読み込み失敗 (ファイルが無い・ディレクトリ・YAML の文法エラー・複数ドキュメント) は、`value` の位置に報告し、その `$ref` を展開せずに残す。報告には `$ref` の文字列・参照元と参照先のファイルを含め、パスは Example のファイルのディレクトリからの相対パスで示す。`redocly.yaml` で `error` (または `on`) にすれば lint と bundle が失敗する。
-- 取り込んだファイルの中に展開されずに残る相対パスの `$ref` (`.json` や `#` 付きの参照、循環・読み込み失敗で残したもの) は、bundle 後も正しいファイルを指すよう、Example のファイルのディレクトリを基準にしたパスへ書き直す。URL・絶対パス・`#` で始まる参照と、Example の `value` に直接書いた参照は書き直さない。
+- 取り込んだファイルの中に展開されずに残る相対パスの `$ref` (`#` 付きの参照、循環・読み込み失敗で残したもの) は、bundle 後も正しいファイルを指すよう、Example のファイルのディレクトリを基準にしたパスへ書き直す。URL・絶対パス・`#` で始まる参照と、Example の `value` に直接書いた参照は書き直さない。
 - Example オブジェクトそのものが `$ref` の場合 (`examples: { a: { $ref: ./a.yaml } }`) は Redocly が解決するため、本 preprocessor の対象外。
 
 ## rule

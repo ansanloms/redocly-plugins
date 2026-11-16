@@ -10,9 +10,17 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 const isUrl = (ref: string): boolean => /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(ref);
 
+/** `#` を含まない、URL でない、絶対パスでない相対パスの参照か。 */
+const isRelativeFileRef = (ref: string): boolean =>
+  !ref.includes("#") && !isUrl(ref) && !isAbsolute(ref);
+
+const isYamlExt = (ref: string): boolean => [".yaml", ".yml"].includes(extname(ref));
+
 /** 展開対象の参照か。`#` を含まない、URL でない、絶対パスでない、拡張子が `.yaml`・`.yml` のもの。 */
-const isExpandableRef = (ref: string): boolean =>
-  !ref.includes("#") && !isUrl(ref) && !isAbsolute(ref) && [".yaml", ".yml"].includes(extname(ref));
+const isExpandableRef = (ref: string): boolean => isRelativeFileRef(ref) && isYamlExt(ref);
+
+/** 落とす参照か。`#` を含まない、URL でない、絶対パスでない、拡張子が `.yaml`・`.yml` でないもの。 */
+const isDroppableRef = (ref: string): boolean => isRelativeFileRef(ref) && !isYamlExt(ref);
 
 const errorMessage = (e: unknown): string =>
   (e instanceof Error ? e.message : String(e)).split("\n")[0]!;
@@ -23,7 +31,10 @@ const errorMessage = (e: unknown): string =>
  * - 展開するのは `value` の中の `$ref` で、`#` を含まない・URL でない・絶対パスでない
  *   `.yaml`・`.yml` への相対パスだけ。参照先は参照元のファイルのディレクトリを基準に解決し、
  *   参照先の中の `$ref` も参照先のファイルのディレクトリを基準に再帰的に展開する。
- * - それ以外の `$ref` (URL・絶対パス・`#` を含む参照・`.json` 等) は展開せず、そのまま残す。
+ * - `#` を含まない・URL でない・絶対パスでない相対パスで、拡張子が `.yaml`・`.yml` でない `$ref` (`.pdf`・`.json` 等) は、
+ *   Redocly は `value` の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため、`$ref` キーを除く。兄弟のキーとその順序は残し、
+ *   `$ref` だけのオブジェクトは `{}` になる。報告はしない。参照先のファイルの中に書かれた参照も同じ。
+ * - それ以外の `$ref` (URL・絶対パス・`#` を含む参照) は展開せず、そのまま残す。
  * - `$ref` だけのオブジェクトは参照先の値 (配列・スカラーを含む) で置き換える。
  *   兄弟のキーがあるときは参照先 (オブジェクトのみ) と合成し、同名のキーは兄弟のキーが勝つ。
  * - 循環参照・読み込み失敗・兄弟のキーがあるのに参照先がオブジェクトでない場合は、
@@ -90,12 +101,14 @@ export const InlineExamples: Oas3Preprocessor = () => {
 
     const plain = (): unknown =>
       Object.fromEntries(
-        Object.entries(value).map(([k, v]) => [
-          k,
-          k === "$ref" && typeof v === "string"
-            ? rewriteRef(v, from, exampleDir)
-            : expand(v, from, exampleDir, chain, problems),
-        ]),
+        Object.entries(value)
+          .filter(([k, v]) => !(k === "$ref" && typeof v === "string" && isDroppableRef(v)))
+          .map(([k, v]) => [
+            k,
+            k === "$ref" && typeof v === "string"
+              ? rewriteRef(v, from, exampleDir)
+              : expand(v, from, exampleDir, chain, problems),
+          ]),
       );
 
     const ref = value.$ref;

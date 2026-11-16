@@ -1,0 +1,8 @@
+a: from-ref
+b: from-ref
+doc:
+  $ref: ./manual.pdf
+nested:
+  list:
+    - $ref: ./data.json
+      keep: 1

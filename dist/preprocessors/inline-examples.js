@@ -3,8 +3,13 @@ import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path"
 import { parseYaml } from "@redocly/openapi-core";
 const isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 const isUrl = (ref) => /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(ref);
+/** `#` を含まない、URL でない、絶対パスでない相対パスの参照か。 */
+const isRelativeFileRef = (ref) => !ref.includes("#") && !isUrl(ref) && !isAbsolute(ref);
+const isYamlExt = (ref) => [".yaml", ".yml"].includes(extname(ref));
 /** 展開対象の参照か。`#` を含まない、URL でない、絶対パスでない、拡張子が `.yaml`・`.yml` のもの。 */
-const isExpandableRef = (ref) => !ref.includes("#") && !isUrl(ref) && !isAbsolute(ref) && [".yaml", ".yml"].includes(extname(ref));
+const isExpandableRef = (ref) => isRelativeFileRef(ref) && isYamlExt(ref);
+/** 落とす参照か。`#` を含まない、URL でない、絶対パスでない、拡張子が `.yaml`・`.yml` でないもの。 */
+const isDroppableRef = (ref) => isRelativeFileRef(ref) && !isYamlExt(ref);
 const errorMessage = (e) => (e instanceof Error ? e.message : String(e)).split("\n")[0];
 /**
  * Example オブジェクトの `value` の中にあるファイル参照 (`$ref: ./x.yaml`) を、bundle 時にインライン展開する。
@@ -12,7 +17,10 @@ const errorMessage = (e) => (e instanceof Error ? e.message : String(e)).split("
  * - 展開するのは `value` の中の `$ref` で、`#` を含まない・URL でない・絶対パスでない
  *   `.yaml`・`.yml` への相対パスだけ。参照先は参照元のファイルのディレクトリを基準に解決し、
  *   参照先の中の `$ref` も参照先のファイルのディレクトリを基準に再帰的に展開する。
- * - それ以外の `$ref` (URL・絶対パス・`#` を含む参照・`.json` 等) は展開せず、そのまま残す。
+ * - `#` を含まない・URL でない・絶対パスでない相対パスで、拡張子が `.yaml`・`.yml` でない `$ref` (`.pdf`・`.json` 等) は、
+ *   Redocly は `value` の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため、`$ref` キーを除く。兄弟のキーとその順序は残し、
+ *   `$ref` だけのオブジェクトは `{}` になる。報告はしない。参照先のファイルの中に書かれた参照も同じ。
+ * - それ以外の `$ref` (URL・絶対パス・`#` を含む参照) は展開せず、そのまま残す。
  * - `$ref` だけのオブジェクトは参照先の値 (配列・スカラーを含む) で置き換える。
  *   兄弟のキーがあるときは参照先 (オブジェクトのみ) と合成し、同名のキーは兄弟のキーが勝つ。
  * - 循環参照・読み込み失敗・兄弟のキーがあるのに参照先がオブジェクトでない場合は、
@@ -67,7 +75,9 @@ export const InlineExamples = () => {
         }
         /** 報告に使うパス。Example のディレクトリからの相対パス。 */
         const show = (file) => relative(exampleDir, file).split(sep).join("/");
-        const plain = () => Object.fromEntries(Object.entries(value).map(([k, v]) => [
+        const plain = () => Object.fromEntries(Object.entries(value)
+            .filter(([k, v]) => !(k === "$ref" && typeof v === "string" && isDroppableRef(v)))
+            .map(([k, v]) => [
             k,
             k === "$ref" && typeof v === "string"
                 ? rewriteRef(v, from, exampleDir)

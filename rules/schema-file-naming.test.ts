@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { createConfig, lint } from "@redocly/openapi-core";
 
+import { fixtureDir, lintRule } from "../test/lint.ts";
 import { findSchemaRegistrationViolations, SchemaFileNaming } from "./schema-file-naming.ts";
 
 const find = findSchemaRegistrationViolations;
@@ -155,4 +156,41 @@ test("Redocly で未解決の $ref が NamedSchemas に渡り、違反を報告�
   const inline = at("#/components/schemas/Inline");
   assert.equal(inline.message, "components.schemas の値は $ref のみにしてください (Inline)。");
   assert.notEqual(inline.location[0]?.reportOnKey, true);
+});
+
+const inlineDefs = (keyword: string): string => `openapi: 3.1.0
+info: { title: t, version: "1" }
+paths:
+  /a:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                ${keyword}:
+                  foo: { type: string }
+components:
+  schemas:
+    User: { $ref: ./components/schemas/User.yaml }
+`;
+
+test("インライン schema の $defs は components.schemas として検査しない", async () => {
+  const r = await lintRule(
+    "schema-file-naming",
+    inlineDefs("$defs"),
+    fixtureDir("schema-file-naming"),
+  );
+  assert.deepEqual(r, []);
+});
+
+test("インライン schema の definitions は components.schemas として検査しない", async () => {
+  const r = await lintRule(
+    "schema-file-naming",
+    inlineDefs("definitions"),
+    fixtureDir("schema-file-naming"),
+  );
+  assert.deepEqual(r, []);
 });

@@ -78,6 +78,8 @@ export const SchemaFileNaming: Oas3Rule = () => {
       },
     },
     NamedSchemas: {
+      // `$defs` / `definitions` も NamedSchemas 型になるので、`components.schemas` だけを見る。
+      skip: (_schemas, key) => key !== "schemas",
       enter: (schemas, ctx) => {
         if (ctx.location.source.absoluteRef !== rootRef) {
           return;

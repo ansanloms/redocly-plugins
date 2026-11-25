@@ -8,6 +8,7 @@ import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.js";
 import { createOperationIdNaming } from "./rules/operation-id-naming.js";
 import { RequestResponseSchemaNaming } from "./rules/request-response-schema-naming.js";
 import { SchemaDescription } from "./rules/schema-description.js";
+import { SchemaFileNaming } from "./rules/schema-file-naming.js";
 export const preprocessors = {
     "inline-examples": InlineExamples,
 };
@@ -47,6 +48,7 @@ export const createPlugin = (options = {}) => () => ({
             "request-response-schema-naming": RequestResponseSchemaNaming,
             "enum-schema-naming": EnumSchemaNaming,
             "no-inline-enum": NoInlineEnum,
+            "schema-file-naming": SchemaFileNaming,
         },
     },
 });

@@ -21,6 +21,7 @@ preprocessor も rule も、`redocly.yaml` で有効化したものだけが動�
 | rule         | `request-response-schema-naming` |
 | rule         | `enum-schema-naming`             |
 | rule         | `no-inline-enum`                 |
+| rule         | `schema-file-naming`             |
 
 ## 利用
 
@@ -51,6 +52,7 @@ rules:
   ansanloms/request-response-schema-naming: error
   ansanloms/enum-schema-naming: error
   ansanloms/no-inline-enum: error
+  ansanloms/schema-file-naming: error
 ```
 
 ## preprocessor
@@ -183,6 +185,15 @@ rules:
 - `const` は対象外。
 - OAS 3.1 で `$ref` の隣に書いた `enum` は見ない。`$ref` の参照先だけを見る。
 
+### `schema-file-naming`
+
+root ファイルの `components.schemas` の登録を検査する。schema は 1 ファイルに 1 つ書き、`$ref` で登録する規約のもと、キー名とファイル名のずれを検出する。option は持たない。
+
+- 検査は 3 つ。キー名が PascalCase (`/^[A-Z][a-zA-Z0-9]+$/`。1 文字の名前は違反)、値が `$ref` だけのオブジェクト (インラインの schema は違反)、`$ref` がキー名と対応していること。
+- 許可する `$ref` は `./components/schemas/<キー名>.yaml` または `.yml` のみ。ディレクトリ違い・拡張子違い・キー名とのずれは違反。
+- 報告位置は、キー名の違反がキー、値の違反がエントリの値、`$ref` の違反が `$ref` の値。キー名の違反と、値・`$ref` の違反は独立に報告する。
+- 検査しないもの: root ファイル以外に置かれた `components.schemas`、`$ref` 先のファイルの実在、`components.schemas` 自体を `$ref` で別ファイルに出した場合 (`schemas: { $ref: ./schemas.yaml }`)。
+
 ## operationId の規約を差し替える
 
 `redocly.yaml` には関数を書けない。規約を差し替えるには、`createPlugin` を呼ぶファイルを利用側に 1 つ置き、`redocly.yaml` の `plugins:` からそのファイルを相対パスで参照する。
@@ -209,7 +220,7 @@ plugins:
 ## 動作環境
 
 > [!NOTE]
-> Redocly CLI 2.75.0 で動作を確認している。Redocly CLI 2.75.0 の `engines` は `>=22.12.0 || >=20.19.0 <21.0.0` で、Node 20.19 以上 21 未満、または 22.12 以上が必要。
+> `@redocly/openapi-core` 2.79.0 でテストしている。Redocly CLI 2.79.0 の `engines` は `>=22.12.0 || >=20.19.0 <21.0.0` で、Node 20.19 以上 21 未満、または 22.12 以上が必要。
 
 本パッケージは `@redocly/openapi-core` を必須の peerDependency (`>=2.0.0`) として宣言している。`@redocly/openapi-core` がインストールされていない場合は、利用側の devDependencies に追加する。
 

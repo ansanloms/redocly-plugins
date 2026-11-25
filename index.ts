@@ -10,6 +10,7 @@ import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.ts";
 import { createOperationIdNaming, type ExpectedOperationId } from "./rules/operation-id-naming.ts";
 import { RequestResponseSchemaNaming } from "./rules/request-response-schema-naming.ts";
 import { SchemaDescription } from "./rules/schema-description.ts";
+import { SchemaFileNaming } from "./rules/schema-file-naming.ts";
 
 export type { ExpectedOperationId } from "./rules/operation-id-naming.ts";
 
@@ -64,6 +65,7 @@ export const createPlugin =
         "request-response-schema-naming": RequestResponseSchemaNaming,
         "enum-schema-naming": EnumSchemaNaming,
         "no-inline-enum": NoInlineEnum,
+        "schema-file-naming": SchemaFileNaming,
       },
     },
   });

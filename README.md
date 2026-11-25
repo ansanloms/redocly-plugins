@@ -139,7 +139,7 @@ plugins:
 ## 動作環境
 
 > [!NOTE]
-> Redocly CLI 2.75.0 で動作を確認している。Redocly CLI 2.75.0 の `engines` は `>=22.12.0 || >=20.19.0 <21.0.0` で、Node 20.19 以上 21 未満、または 22.12 以上が必要。
+> `@redocly/openapi-core` 2.79.0 でテストしている。Redocly CLI 2.79.0 の `engines` は `>=22.12.0 || >=20.19.0 <21.0.0` で、Node 20.19 以上 21 未満、または 22.12 以上が必要。
 
 本パッケージは `@redocly/openapi-core` を必須の peerDependency (`>=2.0.0`) として宣言している。`@redocly/openapi-core` がインストールされていない場合は、利用側の devDependencies に追加する。
 

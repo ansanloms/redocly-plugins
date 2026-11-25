@@ -3,6 +3,7 @@ import type { Oas3Preprocessor } from "@redocly/openapi-core";
 import { InlineExamples } from "./preprocessors/inline-examples.ts";
 import { DescriptionFileNaming } from "./rules/description-file-naming.ts";
 import { ExamplesLayout } from "./rules/examples-layout.ts";
+import { KeyOrder } from "./rules/key-order.ts";
 import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.ts";
 import { createOperationIdNaming, type ExpectedOperationId } from "./rules/operation-id-naming.ts";
 import { SchemaFileNaming } from "./rules/schema-file-naming.ts";
@@ -55,6 +56,7 @@ export const createPlugin =
         "description-file-naming": DescriptionFileNaming,
         "examples-layout": ExamplesLayout,
         "no-unreferenced-files": NoUnreferencedFiles,
+        "key-order": KeyOrder,
         "schema-file-naming": SchemaFileNaming,
       },
     },

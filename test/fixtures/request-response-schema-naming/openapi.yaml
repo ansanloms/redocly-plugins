@@ -1,0 +1,157 @@
+openapi: 3.2.0
+info:
+  title: request-response-schema-naming
+  version: 1.0.0
+paths:
+  /ok:
+    post:
+      operationId: postOk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/RequestCreate.yaml
+      responses:
+        "200":
+          $ref: ./responses/Ok.yaml
+        "201":
+          description: fragment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseInline"
+        "400":
+          description: shared error
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ResponseError.yaml
+      callbacks:
+        onEvent:
+          "{$request.body#/url}":
+            post:
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      $ref: ./schemas/User.yaml
+              responses:
+                "200":
+                  description: callback
+                  content:
+                    application/json:
+                      schema:
+                        $ref: ./schemas/User.yaml
+  /bad-request:
+    post:
+      operationId: postBadRequest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/User.yaml
+      responses:
+        "204":
+          description: no content
+  /bad-inline-request:
+    post:
+      operationId: postBadInlineRequest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "204":
+          description: no content
+  /bad-response:
+    get:
+      operationId: getBadResponse
+      responses:
+        "200":
+          description: model
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/User.yaml
+        "201":
+          description: inline object
+          content:
+            application/json:
+              schema:
+                type: object
+        "202":
+          description: inline array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ./schemas/User.yaml
+        "203":
+          description: item schema
+          content:
+            application/jsonl:
+              itemSchema:
+                $ref: ./schemas/User.yaml
+  /bad-media-type:
+    get:
+      operationId: getBadMediaType
+      responses:
+        "200":
+          description: media type ref
+          content:
+            application/json:
+              $ref: ./media/Model.yaml
+  /bad-request-body-ref:
+    post:
+      operationId: postBadRequestBodyRef
+      requestBody:
+        $ref: ./requestBodies/Bad.yaml
+      responses:
+        "204":
+          description: no content
+  /bad-response-media-ref:
+    get:
+      operationId: getBadResponseMediaRef
+      responses:
+        "200":
+          $ref: ./responses/BadMedia.yaml
+  /shared-a:
+    get:
+      operationId: getSharedA
+      responses:
+        "200":
+          $ref: ./responses/Bad.yaml
+  /shared-b:
+    get:
+      operationId: getSharedB
+      responses:
+        "200":
+          $ref: ./responses/Bad.yaml
+webhooks:
+  hook:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/User.yaml
+      responses:
+        "200":
+          description: webhook
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/User.yaml
+components:
+  schemas:
+    ResponseInline:
+      type: object
+  responses:
+    Orphan:
+      description: orphan
+      content:
+        application/json:
+          schema:
+            $ref: ./schemas/User.yaml

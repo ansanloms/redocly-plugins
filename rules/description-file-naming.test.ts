@@ -146,3 +146,116 @@ test("webhooks と components.pathItems (key が / 始まりでない) は検査
     [],
   );
 });
+
+// schema の検査。偽の ctx で NamedSchemas.Schema.enter を直接呼ぶ。
+interface SchemaVisitor {
+  Root: { enter: () => void };
+  NamedSchemas: {
+    skip: (node: unknown, key: string) => boolean;
+    Schema: {
+      enter: (
+        target: { description?: unknown },
+        ctx: {
+          key: string;
+          location: {
+            pointer: string;
+            source: { absoluteRef: string };
+            child: (path: string[]) => string[];
+          };
+          report: (problem: { message: string; location: string[] }) => void;
+        },
+      ) => void;
+    };
+  };
+}
+
+const runSchema = (
+  cases: { description?: unknown; key?: string; pointer?: string; absoluteRef?: string }[],
+) => {
+  const reported: Reported[] = [];
+  const visitor = (DescriptionFileNaming as unknown as (options: unknown) => SchemaVisitor)({});
+  for (const c of cases) {
+    visitor.NamedSchemas.Schema.enter(
+      { description: c.description },
+      {
+        key: c.key ?? "User",
+        location: {
+          pointer: c.pointer ?? "#/",
+          source: { absoluteRef: c.absoluteRef ?? "/root/components/User.yaml" },
+          child: (path) => path,
+        },
+        report: (problem) => reported.push(problem),
+      },
+    );
+  }
+  return { reported, visitor };
+};
+
+test("schema: pointer が #/ で定義ファイル名と一致していれば報告しない", () => {
+  assert.deepEqual(runSchema([{ description: ref("User") }]).reported, []);
+});
+
+test("schema: pointer が #/ で定義ファイル名と不一致なら description.$ref の位置に報告する", () => {
+  const { reported } = runSchema([
+    { description: ref("Other"), key: "Alias", absoluteRef: "/root/components/User.yaml" },
+  ]);
+  assert.equal(reported.length, 1);
+  assert.deepEqual(reported[0]!.location, ["description", "$ref"]);
+  assert.match(reported[0]!.message, /actual: Other/);
+  assert.match(reported[0]!.message, /expected: User\b/);
+  assert.match(reported[0]!.message, /定義ファイル名/);
+});
+
+test("schema: pointer が #/ 以外のときは ctx.key と比べる", () => {
+  assert.deepEqual(
+    runSchema([{ description: ref("User"), key: "User", pointer: "#/components/schemas/User" }])
+      .reported,
+    [],
+  );
+  const { reported } = runSchema([
+    { description: ref("Other"), key: "User", pointer: "#/components/schemas/User" },
+  ]);
+  assert.equal(reported.length, 1);
+  assert.match(reported[0]!.message, /expected: User\b/);
+  assert.match(reported[0]!.message, /スキーマ名/);
+});
+
+test("schema: インライン文字列・description 無し・形の違う $ref は検査しない", () => {
+  assert.deepEqual(
+    runSchema([
+      { description: "inline", key: "A", pointer: "#/a" },
+      { key: "B", pointer: "#/b" },
+      { description: { $ref: "../other/foo.md" }, key: "C", pointer: "#/c" },
+      { description: { $ref: "./descriptions/sub/foo.md" }, key: "D", pointer: "#/d" },
+    ]).reported,
+    [],
+  );
+});
+
+test("schema: 同じ location の 2 回目は報告せず、Root.enter の後は再び報告する", () => {
+  const wrong = { description: ref("Other") };
+  const { reported, visitor } = runSchema([wrong, wrong]);
+  assert.equal(reported.length, 1);
+
+  visitor.Root.enter();
+  visitor.NamedSchemas.Schema.enter(
+    { description: ref("Other") },
+    {
+      key: "User",
+      location: {
+        pointer: "#/",
+        source: { absoluteRef: "/root/components/User.yaml" },
+        child: (path) => path,
+      },
+      report: (problem) => reported.push(problem),
+    },
+  );
+  assert.equal(reported.length, 2);
+});
+
+test("schema: skip は components.schemas 以外 ($defs・definitions) で true を返す", () => {
+  const { visitor } = runSchema([]);
+  assert.equal(visitor.NamedSchemas.skip({}, "schemas"), false);
+  assert.equal(visitor.NamedSchemas.skip({}, "$defs"), true);
+  assert.equal(visitor.NamedSchemas.skip({}, "definitions"), true);
+});

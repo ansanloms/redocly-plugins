@@ -14,6 +14,7 @@ preprocessor も rule も、`redocly.yaml` で有効化したものだけが動�
 | preprocessor | `inline-examples`         |
 | rule         | `operation-id-naming`     |
 | rule         | `description-file-naming` |
+| rule         | `schema-description`      |
 | rule         | `examples-layout`         |
 | rule         | `no-unreferenced-files`   |
 
@@ -37,6 +38,7 @@ preprocessors:
 rules:
   ansanloms/operation-id-naming: error
   ansanloms/description-file-naming: error
+  ansanloms/schema-description: error
   ansanloms/examples-layout: error
   ansanloms/no-unreferenced-files:
     severity: error
@@ -79,6 +81,21 @@ operation の description を外部 md ファイルに切り出している場�
 - 対象は `paths` 直下の operation の `description: { $ref: ./descriptions/<x>.md }` のみ。
 - `<x>` が operationId と一致しなければ、`description.$ref` の位置に報告する。
 - `./descriptions/<x>.md` 形でない `$ref`、インラインの description、operationId の無い operation は検査しない。
+
+`components.schemas` 直下の schema も検査する。
+
+- 対象は schema の `description: { $ref: ./descriptions/<x>.md }` のみ。`<x>` が一致しなければ `description.$ref` の位置に報告する。
+- 比べる相手は schema の定義ファイル名 (拡張子なし)。schema が別ファイルのルートに在る場合はそのファイル名、root に直書きの schema と `./x.yaml#/User` のようなフラグメント付きの参照先は `components.schemas` のキー名。
+- `./descriptions/<x>.md` 形でない `$ref` とインラインの description は検査しない。`$defs`・`definitions` は対象外。
+
+### `schema-description`
+
+`components.schemas` に登録した schema のルートに description があることを要求する。
+
+- 対象は `components.schemas` 直下の schema のみ。`properties`・`items`・`allOf` 等のネストした schema と、`$defs`・`definitions` は検査しない。
+- description の書き方は縛らない。インライン文字列でも `./descriptions/<x>.md` への `$ref` でも、在れば通す。参照先ファイルの存在は見ない。
+- `$ref` だけのエイリアスは、参照先 (終点) の description で判定する。
+- description が無い・`null`・空白だけの文字列のとき、その schema のルートに報告する。同じ schema は 1 回だけ報告する。
 
 ### `examples-layout`
 

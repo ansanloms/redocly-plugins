@@ -26,6 +26,7 @@ export declare const createPlugin: (options?: PluginOptions) => () => {
             "description-file-naming": import("@redocly/openapi-core").Oas3Rule;
             "examples-layout": import("@redocly/openapi-core").Oas3Rule;
             "no-unreferenced-files": import("@redocly/openapi-core").Oas3Rule;
+            "schema-file-naming": import("@redocly/openapi-core").Oas3Rule;
         };
     };
 };
@@ -40,6 +41,7 @@ declare const _default: () => {
             "description-file-naming": import("@redocly/openapi-core").Oas3Rule;
             "examples-layout": import("@redocly/openapi-core").Oas3Rule;
             "no-unreferenced-files": import("@redocly/openapi-core").Oas3Rule;
+            "schema-file-naming": import("@redocly/openapi-core").Oas3Rule;
         };
     };
 };

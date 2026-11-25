@@ -16,6 +16,7 @@ preprocessor も rule も、`redocly.yaml` で有効化したものだけが動�
 | rule         | `description-file-naming` |
 | rule         | `examples-layout`         |
 | rule         | `no-unreferenced-files`   |
+| rule         | `schema-file-naming`      |
 
 ## 利用
 
@@ -41,6 +42,7 @@ rules:
   ansanloms/no-unreferenced-files:
     severity: error
     dirs: [paths, components]
+  ansanloms/schema-file-naming: error
 ```
 
 ## preprocessor
@@ -101,6 +103,15 @@ root ファイルと同じディレクトリの `examples/` 配下のファイ�
 > [!WARNING]
 > `examples` を `dirs` に入れてはいけない。example の `value` 内の `$ref` は参照として辿られないため、誤検出になる。
 > `externalValue` や `discriminator.mapping` だけで使われるファイルも参照として辿られず、未参照と報告される。
+
+### `schema-file-naming`
+
+root ファイルの `components.schemas` の登録を検査する。schema は 1 ファイルに 1 つ書き、`$ref` で登録する規約のもと、キー名とファイル名のずれを検出する。option は持たない。
+
+- 検査は 3 つ。キー名が PascalCase (`/^[A-Z][a-zA-Z0-9]+$/`。1 文字の名前は違反)、値が `$ref` だけのオブジェクト (インラインの schema は違反)、`$ref` がキー名と対応していること。
+- 許可する `$ref` は `./components/schemas/<キー名>.yaml` または `.yml` のみ。ディレクトリ違い・拡張子違い・キー名とのずれは違反。
+- 報告位置は、キー名の違反がキー、値の違反がエントリの値、`$ref` の違反が `$ref` の値。キー名の違反と、値・`$ref` の違反は独立に報告する。
+- 検査しないもの: root ファイル以外に置かれた `components.schemas`、`$ref` 先のファイルの実在、`components.schemas` 自体を `$ref` で別ファイルに出した場合 (`schemas: { $ref: ./schemas.yaml }`)。
 
 ## operationId の規約を差し替える
 

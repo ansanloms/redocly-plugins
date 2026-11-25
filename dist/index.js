@@ -3,6 +3,7 @@ import { DescriptionFileNaming } from "./rules/description-file-naming.js";
 import { ExamplesLayout } from "./rules/examples-layout.js";
 import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.js";
 import { createOperationIdNaming } from "./rules/operation-id-naming.js";
+import { SchemaFileNaming } from "./rules/schema-file-naming.js";
 export const preprocessors = {
     "inline-examples": InlineExamples,
 };
@@ -37,6 +38,7 @@ export const createPlugin = (options = {}) => () => ({
             "description-file-naming": DescriptionFileNaming,
             "examples-layout": ExamplesLayout,
             "no-unreferenced-files": NoUnreferencedFiles,
+            "schema-file-naming": SchemaFileNaming,
         },
     },
 });

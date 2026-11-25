@@ -9,13 +9,14 @@ npm には publish せず、GitHub のタグを git 依存で参照する。
 plugin id は `ansanloms`。`redocly.yaml` では `ansanloms/<名前>` で参照する。
 preprocessor も rule も、`redocly.yaml` で有効化したものだけが動く。
 
-| 種別         | 名前                      |
-| ------------ | ------------------------- |
-| preprocessor | `inline-examples`         |
-| rule         | `operation-id-naming`     |
-| rule         | `description-file-naming` |
-| rule         | `examples-layout`         |
-| rule         | `no-unreferenced-files`   |
+| 種別         | 名前                             |
+| ------------ | -------------------------------- |
+| preprocessor | `inline-examples`                |
+| rule         | `operation-id-naming`            |
+| rule         | `description-file-naming`        |
+| rule         | `examples-layout`                |
+| rule         | `no-unreferenced-files`          |
+| rule         | `request-response-schema-naming` |
 
 ## 利用
 
@@ -41,6 +42,7 @@ rules:
   ansanloms/no-unreferenced-files:
     severity: error
     dirs: [paths, components]
+  ansanloms/request-response-schema-naming: error
 ```
 
 ## preprocessor
@@ -101,6 +103,18 @@ root ファイルと同じディレクトリの `examples/` 配下のファイ�
 > [!WARNING]
 > `examples` を `dirs` に入れてはいけない。example の `value` 内の `$ref` は参照として辿られないため、誤検出になる。
 > `externalValue` や `discriminator.mapping` だけで使われるファイルも参照として辿られず、未参照と報告される。
+
+### `request-response-schema-naming`
+
+エンドポイントの requestBody は `Request*`、response は `Response*` の schema だけを参照させる。
+
+- 対象は `paths` 直下の operation の requestBody と response の `content.<media type>` の `schema` と `itemSchema`。`$ref` 先のファイルの中も、operation から参照されていれば検査する。
+- schema の名前は `$ref` 文字列の末尾から決める。`#` より後ろがあればその最後のセグメント、無ければファイル名 (拡張子なし)。requestBody は `Request` + 大文字、response は `Response` + 大文字で始まらなければ、`$ref` の位置に報告する。
+- インラインの schema (`$ref` を持たないもの) は報告する。`type: array` + `items: $ref` もインラインとして報告する。
+- `schema` も `itemSchema` も無い media type (`example` だけのもの等) は検査しない。
+- 接頭辞は固定で、オプションは無い。
+- `headers.<name>.content`、callbacks 内・webhooks・`components.pathItems` の operation、どの operation からも参照されない `components.responses` は検査しない。
+- 同じ `$ref` 先のファイルを複数の operation が参照していても、報告は 1 件にまとめる。
 
 ## operationId の規約を差し替える
 

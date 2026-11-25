@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { fixtureDir, lintRule } from "../test/lint.ts";
 import { DescriptionFileNaming } from "./description-file-naming.ts";
 
 // Redocly の visitor を模した最小の文脈でルールを駆動し、報告された内容を返す。
@@ -258,4 +259,54 @@ test("schema: skip は components.schemas 以外 ($defs・definitions) で true 
   assert.equal(visitor.NamedSchemas.skip({}, "schemas"), false);
   assert.equal(visitor.NamedSchemas.skip({}, "$defs"), true);
   assert.equal(visitor.NamedSchemas.skip({}, "definitions"), true);
+});
+
+const lintSchemas = (schemas: string) =>
+  lintRule(
+    "description-file-naming",
+    `openapi: 3.0.3
+info: { title: t, version: "1" }
+paths: {}
+components:
+  schemas:
+${schemas}
+`,
+    fixtureDir("description-file-naming"),
+  );
+
+test("別のキーを指す $ref があっても、参照先が先に在れば報告しない", async () => {
+  const r = await lintSchemas(`    A: { $ref: "#/components/schemas/User" }
+    User: { type: object, description: { $ref: ./descriptions/User.md } }`);
+  assert.deepEqual(r, []);
+});
+
+test("別のキーを指す $ref があっても、キーの順を入れ替えて報告しない", async () => {
+  const r =
+    await lintSchemas(`    User: { type: object, description: { $ref: ./descriptions/User.md } }
+    A: { $ref: "#/components/schemas/User" }`);
+  assert.deepEqual(r, []);
+});
+
+test("別のキーを指す $ref があっても、参照先の名前と食い違えば定義側のキーで報告する", async () => {
+  const r = await lintSchemas(`    A: { $ref: "#/components/schemas/User" }
+    User: { type: object, description: { $ref: ./descriptions/Other.md } }`);
+  assert.equal(r.length, 1);
+  assert.equal(r[0]!.pointer, "#/components/schemas/User/description/$ref");
+  assert.match(r[0]!.message, /actual: Other, expected: User/);
+});
+
+test("~ を含むキーは JSON Pointer のエスケープを戻して比べる", async () => {
+  const r = await lintSchemas(
+    `    "a~b": { type: object, description: { $ref: ./descriptions/a~b.md } }`,
+  );
+  assert.deepEqual(r, []);
+});
+
+test("/ を含むキーは JSON Pointer のエスケープを戻したキーで報告する", async () => {
+  const r = await lintSchemas(
+    `    "a/b": { type: object, description: { $ref: ./descriptions/x.md } }`,
+  );
+  assert.equal(r.length, 1);
+  assert.match(r[0]!.message, /actual: x, expected: a\/b\)/);
+  assert.doesNotMatch(r[0]!.message, /a~1b/);
 });

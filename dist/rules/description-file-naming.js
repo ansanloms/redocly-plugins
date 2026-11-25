@@ -2,6 +2,8 @@ import { parse } from "node:path";
 import { createTopLevelPathTracker } from "./top-level-path.js";
 // `./descriptions/<x>.md` 形の $ref。<x> はサブディレクトリを含まないファイル名 (拡張子なし)。
 const DESCRIPTION_REF = /^\.\/descriptions\/([^/]+)\.md$/;
+// `#/components/schemas/<キー>` 形の pointer。<キー> は JSON Pointer のエスケープのまま。
+const SCHEMA_POINTER = /^#\/components\/schemas\/([^/]+)$/;
 /**
  * operation の description を外部 md ファイルに切り出している場合、そのファイル名 (拡張子なし) を
  * operationId と一致させる。
@@ -51,9 +53,14 @@ export const DescriptionFileNaming = () => {
                     checked.add(id);
                     const actual = matched[1];
                     const isDefinitionFile = ctx.location.pointer === "#/";
+                    // 別のキーからの $ref 経由で訪問されることがあるので、ctx.key (参照元) ではなく
+                    // schema が定義されている位置から期待値を導く。訪問の順序に依らない結果にする。
+                    const defined = SCHEMA_POINTER.exec(ctx.location.pointer);
                     const expected = isDefinitionFile
                         ? parse(ctx.location.source.absoluteRef).name
-                        : String(ctx.key);
+                        : defined
+                            ? defined[1].replaceAll("~1", "/").replaceAll("~0", "~")
+                            : String(ctx.key);
                     if (actual !== expected) {
                         const target = isDefinitionFile ? "定義ファイル名" : "スキーマ名";
                         ctx.report({

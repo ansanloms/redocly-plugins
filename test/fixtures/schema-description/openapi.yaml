@@ -1,0 +1,20 @@
+openapi: 3.1.0
+info:
+  title: schema-description
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    User:
+      $ref: "./User.yaml"
+    NoDescription:
+      $ref: "./NoDescription.yaml"
+    NoDescriptionAlias:
+      $ref: "./NoDescriptionAlias.yaml"
+    ResponseGetUsersId:
+      $ref: "./ResponseGetUsersId.yaml"
+    Wrong:
+      $ref: "./Wrong.yaml"
+    Inline:
+      type: object
+      description: インラインの説明。

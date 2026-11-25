@@ -1,0 +1,9 @@
+type: object
+description:
+  $ref: "./descriptions/User.md"
+properties:
+  name:
+    type: string
+$defs:
+  Unused:
+    type: string

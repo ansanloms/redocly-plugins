@@ -7,6 +7,7 @@ import { NoInlineEnum } from "./rules/no-inline-enum.js";
 import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.js";
 import { createOperationIdNaming } from "./rules/operation-id-naming.js";
 import { RequestResponseSchemaNaming } from "./rules/request-response-schema-naming.js";
+import { SchemaDescription } from "./rules/schema-description.js";
 export const preprocessors = {
     "inline-examples": InlineExamples,
 };
@@ -39,6 +40,7 @@ export const createPlugin = (options = {}) => () => ({
         oas3: {
             "operation-id-naming": createOperationIdNaming(options.operationId ?? expectedOperationId),
             "description-file-naming": DescriptionFileNaming,
+            "schema-description": SchemaDescription,
             "examples-layout": ExamplesLayout,
             "no-unreferenced-files": NoUnreferencedFiles,
             "key-order": KeyOrder,

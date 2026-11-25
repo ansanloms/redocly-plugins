@@ -16,6 +16,7 @@ preprocessor も rule も、`redocly.yaml` で有効化したものだけが動�
 | rule         | `description-file-naming` |
 | rule         | `examples-layout`         |
 | rule         | `no-unreferenced-files`   |
+| rule         | `key-order`               |
 | rule         | `enum-schema-naming`      |
 | rule         | `no-inline-enum`          |
 
@@ -45,6 +46,7 @@ rules:
   ansanloms/no-unreferenced-files:
     severity: error
     dirs: [paths, components]
+  ansanloms/key-order: error
 ```
 
 ## preprocessor
@@ -105,6 +107,30 @@ root ファイルと同じディレクトリの `examples/` 配下のファイ�
 > [!WARNING]
 > `examples` を `dirs` に入れてはいけない。example の `value` 内の `$ref` は参照として辿られないため、誤検出になる。
 > `externalValue` や `discriminator.mapping` だけで使われるファイルも参照として辿られず、未参照と報告される。
+
+### `key-order`
+
+node type ごとにキーの順を検査する。検査だけを行い、並べ替えはしない。Redocly CLI の configurable rule には任意の指定順を検査する assertion が無いため、本 rule で補う。
+
+- オプション `orders` は node type 名をキー、キーの順を値にしたオブジェクト。既定値は `{ Parameter: [in, name, required, description, schema] }`。
+- 期待する順は、`orders` に載っていてノードに在るキーを `orders` の順に並べ、その後ろに載っていないキーを実際の順のまま並べたもの。載っていないキー同士の順は問わない。
+- 実際の順と食い違う最初のキーを、1 ノードにつき 1 件、そのキーの位置に報告する。メッセージにはノードに在るキー全部の実際の順 (actual) と期待する順 (expected) を書く。
+- `orders` は node type 名の単位で既定値に上書きする。`Operation` だけを足しても Parameter の既定は残る。ある node type の検査を外すには、その型に空配列を渡す。
+- node type 名は `redocly inspect-node-types` で調べられる。
+
+```yaml
+rules:
+  ansanloms/key-order:
+    severity: error
+    orders:
+      Operation: [operationId, summary, description]
+      Parameter: []
+```
+
+制限:
+
+- 整数に見えるキー (`"200"` 等) は JavaScript が昇順で先頭に並べるため、そうしたキーを持つ型 (`Responses` 等) では記述順を検査できない。
+- 並べ替えはしない。報告に従って手で直す。
 
 ### `enum-schema-naming`
 

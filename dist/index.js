@@ -2,6 +2,7 @@ import { InlineExamples } from "./preprocessors/inline-examples.js";
 import { DescriptionFileNaming } from "./rules/description-file-naming.js";
 import { EnumSchemaNaming } from "./rules/enum-schema-naming.js";
 import { ExamplesLayout } from "./rules/examples-layout.js";
+import { KeyOrder } from "./rules/key-order.js";
 import { NoInlineEnum } from "./rules/no-inline-enum.js";
 import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.js";
 import { createOperationIdNaming } from "./rules/operation-id-naming.js";
@@ -39,6 +40,7 @@ export const createPlugin = (options = {}) => () => ({
             "description-file-naming": DescriptionFileNaming,
             "examples-layout": ExamplesLayout,
             "no-unreferenced-files": NoUnreferencedFiles,
+            "key-order": KeyOrder,
             "enum-schema-naming": EnumSchemaNaming,
             "no-inline-enum": NoInlineEnum,
         },

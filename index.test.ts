@@ -410,13 +410,15 @@ test("メソッドは小文字化する", () => {
   assert.equal(expectedOperationId("GET", "/carts"), "getCarts");
 });
 
-test("createPlugin は既定の規約で operation-id-naming・description-file-naming・examples-layout・no-unreferenced-files・key-order・request-response-schema-naming を持つ", () => {
+test("createPlugin は既定の規約で operation-id-naming・description-file-naming・examples-layout・no-unreferenced-files・key-order・request-response-schema-naming・enum-schema-naming・no-inline-enum を持つ", () => {
   const p = createPlugin()();
   assert.equal(p.id, "ansanloms");
   assert.deepEqual(Object.keys(p.rules.oas3).sort(), [
     "description-file-naming",
+    "enum-schema-naming",
     "examples-layout",
     "key-order",
+    "no-inline-enum",
     "no-unreferenced-files",
     "operation-id-naming",
     "request-response-schema-naming",

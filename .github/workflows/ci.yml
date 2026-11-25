@@ -35,7 +35,7 @@ jobs:
             const plugin = mod.default();
             if (plugin.id !== "ansanloms") throw new Error("unexpected id: " + plugin.id);
             if (typeof plugin.preprocessors.oas3["inline-examples"] !== "function") throw new Error("preprocessor missing");
-            for (const name of ["operation-id-naming", "description-file-naming", "examples-layout", "no-unreferenced-files", "key-order", "request-response-schema-naming"]) {
+            for (const name of ["operation-id-naming", "description-file-naming", "examples-layout", "no-unreferenced-files", "key-order", "request-response-schema-naming", "enum-schema-naming", "no-inline-enum"]) {
               if (typeof plugin.rules.oas3[name] !== "function") throw new Error("rule missing: " + name);
             }
             for (const name of ["createPlugin", "expectedOperationId"]) {

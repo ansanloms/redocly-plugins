@@ -1,0 +1,7 @@
+schemas:
+  EnumStatus:
+    type: string
+    enum: [a, b]
+  Status:
+    type: string
+    enum: [a, b]

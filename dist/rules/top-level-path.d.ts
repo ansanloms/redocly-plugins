@@ -11,3 +11,22 @@ export declare const createTopLevelPathTracker: () => {
     /** paths 直下の PathItem の中にいればその path を、そうでなければ undefined を返す。 */
     current: () => string | undefined;
 };
+/**
+ * tracker と、visitor の `PathItem` に差し込む enter / leave をまとめて返す。
+ *
+ * rule 側は返り値の `PathItem` を visitor にそのまま置き、`tracker.current()` で paths 直下の path を引く。
+ */
+export declare const createTopLevelPathVisitor: () => {
+    tracker: {
+        enter: (key: string | number) => void;
+        leave: () => void;
+        /** paths 直下の PathItem の中にいればその path を、そうでなければ undefined を返す。 */
+        current: () => string | undefined;
+    };
+    PathItem: {
+        enter: (_target: unknown, ctx: {
+            key: string | number;
+        }) => void;
+        leave: () => void;
+    };
+};

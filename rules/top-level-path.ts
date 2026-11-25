@@ -25,3 +25,24 @@ export const createTopLevelPathTracker = () => {
     },
   };
 };
+
+/**
+ * tracker と、visitor の `PathItem` に差し込む enter / leave をまとめて返す。
+ *
+ * rule 側は返り値の `PathItem` を visitor にそのまま置き、`tracker.current()` で paths 直下の path を引く。
+ */
+export const createTopLevelPathVisitor = () => {
+  const tracker = createTopLevelPathTracker();
+
+  return {
+    tracker,
+    PathItem: {
+      enter: (_target: unknown, ctx: { key: string | number }): void => {
+        tracker.enter(ctx.key);
+      },
+      leave: (): void => {
+        tracker.leave();
+      },
+    },
+  };
+};

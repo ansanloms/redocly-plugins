@@ -1,6 +1,6 @@
 import type { Oas3Rule, UserContext } from "@redocly/openapi-core";
 
-import { createTopLevelPathTracker } from "./top-level-path.ts";
+import { createTopLevelPathVisitor } from "./top-level-path.ts";
 
 /**
  * `$ref` 文字列から schema の名前を取り出す。
@@ -42,7 +42,7 @@ type Kind = keyof typeof PREFIXES;
  * - 同じ箇所は何度訪問されても 1 回だけ報告する。
  */
 export const RequestResponseSchemaNaming: Oas3Rule = () => {
-  const tracker = createTopLevelPathTracker();
+  const { tracker, PathItem } = createTopLevelPathVisitor();
   const reported = new Set<string>();
 
   const check = (kind: Kind, target: unknown, ctx: UserContext) => {
@@ -101,14 +101,7 @@ export const RequestResponseSchemaNaming: Oas3Rule = () => {
   };
 
   return {
-    PathItem: {
-      enter: (_target, ctx) => {
-        tracker.enter(ctx.key);
-      },
-      leave: () => {
-        tracker.leave();
-      },
-    },
+    PathItem,
     Operation: {
       RequestBody: {
         enter: (target, ctx) => {

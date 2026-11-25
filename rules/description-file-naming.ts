@@ -2,7 +2,7 @@ import { parse } from "node:path";
 
 import type { Oas3Rule } from "@redocly/openapi-core";
 
-import { createTopLevelPathTracker } from "./top-level-path.ts";
+import { createTopLevelPathVisitor } from "./top-level-path.ts";
 
 // `./descriptions/<x>.md` 形の $ref。<x> はサブディレクトリを含まないファイル名 (拡張子なし)。
 const DESCRIPTION_REF = /^\.\/descriptions\/([^/]+)\.md$/;
@@ -27,7 +27,7 @@ const SCHEMA_POINTER = /^#\/components\/schemas\/([^/]+)$/;
  * - `$defs`・`definitions` は検査しない。
  */
 export const DescriptionFileNaming: Oas3Rule = () => {
-  const tracker = createTopLevelPathTracker();
+  const { tracker, PathItem } = createTopLevelPathVisitor();
   const checked = new Set<string>();
 
   return {
@@ -82,14 +82,7 @@ export const DescriptionFileNaming: Oas3Rule = () => {
         },
       },
     },
-    PathItem: {
-      enter: (_target, ctx) => {
-        tracker.enter(ctx.key);
-      },
-      leave: () => {
-        tracker.leave();
-      },
-    },
+    PathItem,
     Operation: {
       enter: (target, ctx) => {
         // paths 直下の PathItem のみ対象とする。

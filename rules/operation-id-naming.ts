@@ -1,6 +1,6 @@
 import type { Oas3Rule } from "@redocly/openapi-core";
 
-import { createTopLevelPathTracker } from "./top-level-path.ts";
+import { createTopLevelPathVisitor } from "./top-level-path.ts";
 
 /** メソッドとパスから期待する operationId を返す関数の型。plugin に注入できる。 */
 export type ExpectedOperationId = (method: string, path: string) => string;
@@ -8,17 +8,10 @@ export type ExpectedOperationId = (method: string, path: string) => string;
 export const createOperationIdNaming =
   (expected: ExpectedOperationId): Oas3Rule =>
   () => {
-    const tracker = createTopLevelPathTracker();
+    const { tracker, PathItem } = createTopLevelPathVisitor();
 
     return {
-      PathItem: {
-        enter: (_target, ctx) => {
-          tracker.enter(ctx.key);
-        },
-        leave: () => {
-          tracker.leave();
-        },
-      },
+      PathItem,
       Operation: {
         enter: (target, ctx) => {
           // paths 直下の PathItem のみ対象とする。

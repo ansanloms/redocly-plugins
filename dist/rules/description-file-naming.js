@@ -1,5 +1,5 @@
 import { parse } from "node:path";
-import { createTopLevelPathTracker } from "./top-level-path.js";
+import { createTopLevelPathVisitor } from "./top-level-path.js";
 // `./descriptions/<x>.md` 形の $ref。<x> はサブディレクトリを含まないファイル名 (拡張子なし)。
 const DESCRIPTION_REF = /^\.\/descriptions\/([^/]+)\.md$/;
 // `#/components/schemas/<キー>` 形の pointer。<キー> は JSON Pointer のエスケープのまま。
@@ -21,7 +21,7 @@ const SCHEMA_POINTER = /^#\/components\/schemas\/([^/]+)$/;
  * - `$defs`・`definitions` は検査しない。
  */
 export const DescriptionFileNaming = () => {
-    const tracker = createTopLevelPathTracker();
+    const { tracker, PathItem } = createTopLevelPathVisitor();
     const checked = new Set();
     return {
         Root: {
@@ -71,14 +71,7 @@ export const DescriptionFileNaming = () => {
                 },
             },
         },
-        PathItem: {
-            enter: (_target, ctx) => {
-                tracker.enter(ctx.key);
-            },
-            leave: () => {
-                tracker.leave();
-            },
-        },
+        PathItem,
         Operation: {
             enter: (target, ctx) => {
                 // paths 直下の PathItem のみ対象とする。

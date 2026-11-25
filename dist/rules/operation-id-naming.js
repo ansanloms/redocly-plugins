@@ -1,15 +1,8 @@
-import { createTopLevelPathTracker } from "./top-level-path.js";
+import { createTopLevelPathVisitor } from "./top-level-path.js";
 export const createOperationIdNaming = (expected) => () => {
-    const tracker = createTopLevelPathTracker();
+    const { tracker, PathItem } = createTopLevelPathVisitor();
     return {
-        PathItem: {
-            enter: (_target, ctx) => {
-                tracker.enter(ctx.key);
-            },
-            leave: () => {
-                tracker.leave();
-            },
-        },
+        PathItem,
         Operation: {
             enter: (target, ctx) => {
                 // paths 直下の PathItem のみ対象とする。

@@ -1,4 +1,4 @@
-import { createTopLevelPathTracker } from "./top-level-path.js";
+import { createTopLevelPathVisitor } from "./top-level-path.js";
 /**
  * `$ref` 文字列から schema の名前を取り出す。
  *
@@ -32,7 +32,7 @@ const PREFIXES = {
  * - 同じ箇所は何度訪問されても 1 回だけ報告する。
  */
 export const RequestResponseSchemaNaming = () => {
-    const tracker = createTopLevelPathTracker();
+    const { tracker, PathItem } = createTopLevelPathVisitor();
     const reported = new Set();
     const check = (kind, target, ctx) => {
         if (tracker.current() === undefined || !isRecord(target) || !isRecord(target.content)) {
@@ -79,14 +79,7 @@ export const RequestResponseSchemaNaming = () => {
         }
     };
     return {
-        PathItem: {
-            enter: (_target, ctx) => {
-                tracker.enter(ctx.key);
-            },
-            leave: () => {
-                tracker.leave();
-            },
-        },
+        PathItem,
         Operation: {
             RequestBody: {
                 enter: (target, ctx) => {

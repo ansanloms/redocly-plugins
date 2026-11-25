@@ -33,7 +33,7 @@
     "fix": "oxlint --fix && oxfmt"
   },
   "devDependencies": {
-    "@redocly/openapi-core": "2.76.0",
+    "@redocly/openapi-core": "2.79.0",
     "@types/node": "26.6.6",
     "oxfmt": "0.77.0",
     "oxlint": "1.92.0",

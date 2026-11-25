@@ -1,0 +1,9 @@
+EnumStatus:
+  type: string
+  enum: [a, b]
+Holder:
+  type: object
+  properties:
+    kind:
+      type: string
+      enum: [x, y]

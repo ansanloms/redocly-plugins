@@ -1,0 +1,5 @@
+type: object
+properties:
+  kind:
+    type: string
+    enum: [x, y]

@@ -1,0 +1,28 @@
+openapi: 3.1.0
+info:
+  title: key-order
+  version: 1.0.0
+paths:
+  /items:
+    parameters:
+      - in: query
+        name: ok
+      - name: ng
+        in: query
+    get:
+      parameters:
+        - in: query
+          name: ok
+        - name: ng
+          in: query
+      responses:
+        "200":
+          description: ok
+components:
+  parameters:
+    Ok:
+      in: query
+      name: ok
+    Ng:
+      name: ng
+      in: query

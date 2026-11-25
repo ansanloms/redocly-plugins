@@ -9,13 +9,19 @@ npm には publish せず、GitHub のタグを git 依存で参照する。
 plugin id は `ansanloms`。`redocly.yaml` では `ansanloms/<名前>` で参照する。
 preprocessor も rule も、`redocly.yaml` で有効化したものだけが動く。
 
-| 種別         | 名前                      |
-| ------------ | ------------------------- |
-| preprocessor | `inline-examples`         |
-| rule         | `operation-id-naming`     |
-| rule         | `description-file-naming` |
-| rule         | `examples-layout`         |
-| rule         | `no-unreferenced-files`   |
+| 種別         | 名前                             |
+| ------------ | -------------------------------- |
+| preprocessor | `inline-examples`                |
+| rule         | `operation-id-naming`            |
+| rule         | `description-file-naming`        |
+| rule         | `schema-description`             |
+| rule         | `examples-layout`                |
+| rule         | `no-unreferenced-files`          |
+| rule         | `key-order`                      |
+| rule         | `request-response-schema-naming` |
+| rule         | `enum-schema-naming`             |
+| rule         | `no-inline-enum`                 |
+| rule         | `schema-file-naming`             |
 
 ## 利用
 
@@ -37,10 +43,16 @@ preprocessors:
 rules:
   ansanloms/operation-id-naming: error
   ansanloms/description-file-naming: error
+  ansanloms/schema-description: error
   ansanloms/examples-layout: error
   ansanloms/no-unreferenced-files:
     severity: error
     dirs: [paths, components]
+  ansanloms/key-order: error
+  ansanloms/request-response-schema-naming: error
+  ansanloms/enum-schema-naming: error
+  ansanloms/no-inline-enum: error
+  ansanloms/schema-file-naming: error
 ```
 
 ## preprocessor
@@ -80,6 +92,21 @@ operation の description を外部 md ファイルに切り出している場�
 - `<x>` が operationId と一致しなければ、`description.$ref` の位置に報告する。
 - `./descriptions/<x>.md` 形でない `$ref`、インラインの description、operationId の無い operation は検査しない。
 
+`components.schemas` 直下の schema も検査する。
+
+- 対象は schema の `description: { $ref: ./descriptions/<x>.md }` のみ。`<x>` が一致しなければ `description.$ref` の位置に報告する。
+- 比べる相手は schema の定義ファイル名 (拡張子なし)。schema が別ファイルのルートに在る場合はそのファイル名、root に直書きの schema と `./x.yaml#/User` のようなフラグメント付きの参照先は `components.schemas` のキー名。
+- `./descriptions/<x>.md` 形でない `$ref` とインラインの description は検査しない。`$defs`・`definitions` は対象外。
+
+### `schema-description`
+
+`components.schemas` に登録した schema のルートに description があることを要求する。
+
+- 対象は `components.schemas` 直下の schema のみ。`properties`・`items`・`allOf` 等のネストした schema と、`$defs`・`definitions` は検査しない。
+- description の書き方は縛らない。インライン文字列でも `./descriptions/<x>.md` への `$ref` でも、在れば通す。参照先ファイルの存在は見ない。
+- `$ref` だけのエイリアスは、参照先 (終点) の description で判定する。
+- description が無い・`null`・空白だけの文字列のとき、その schema のルートに報告する。同じ schema は 1 回だけ報告する。
+
 ### `examples-layout`
 
 root ファイルと同じディレクトリの `examples/` 配下のファイル配置を検査する。`examples/` が無ければ何もしない。
@@ -101,6 +128,71 @@ root ファイルと同じディレクトリの `examples/` 配下のファイ�
 > [!WARNING]
 > `examples` を `dirs` に入れてはいけない。example の `value` 内の `$ref` は参照として辿られないため、誤検出になる。
 > `externalValue` や `discriminator.mapping` だけで使われるファイルも参照として辿られず、未参照と報告される。
+
+### `key-order`
+
+node type ごとにキーの順を検査する。検査だけを行い、並べ替えはしない。Redocly CLI の configurable rule には任意の指定順を検査する assertion が無いため、本 rule で補う。
+
+- オプション `orders` は node type 名をキー、キーの順を値にしたオブジェクト。既定値は `{ Parameter: [in, name, required, description, schema] }`。
+- 期待する順は、`orders` に載っていてノードに在るキーを `orders` の順に並べ、その後ろに載っていないキーを実際の順のまま並べたもの。載っていないキー同士の順は問わない。
+- 実際の順と食い違う最初のキーを、1 ノードにつき 1 件、そのキーの位置に報告する。メッセージにはノードに在るキー全部の実際の順 (actual) と期待する順 (expected) を書く。
+- `orders` は node type 名の単位で既定値に上書きする。`Operation` だけを足しても Parameter の既定は残る。ある node type の検査を外すには、その型に空配列を渡す。
+- node type 名は `redocly inspect-node-types` で調べられる。
+
+```yaml
+rules:
+  ansanloms/key-order:
+    severity: error
+    orders:
+      Operation: [operationId, summary, description]
+      Parameter: []
+```
+
+制限:
+
+- 整数に見えるキー (`"200"` 等) は JavaScript が昇順で先頭に並べるため、そうしたキーを持つ型 (`Responses` 等) では記述順を検査できない。
+- 並べ替えはしない。報告に従って手で直す。
+
+### `request-response-schema-naming`
+
+エンドポイントの requestBody は `Request*`、response は `Response*` の schema だけを参照させる。
+
+- 対象は `paths` 直下の operation の requestBody と response の `content.<media type>` の `schema` と `itemSchema`。`$ref` 先のファイルの中も、operation から参照されていれば検査する。
+- schema の名前は `$ref` 文字列の末尾から決める。`#` より後ろがあればその最後のセグメント、無ければファイル名 (拡張子なし)。requestBody は `Request` + 大文字、response は `Response` + 大文字で始まらなければ、`$ref` の位置に報告する。
+- インラインの schema (`$ref` を持たないもの) は報告する。`type: array` + `items: $ref` もインラインとして報告する。
+- `schema` も `itemSchema` も無い media type (`example` だけのもの等) は検査しない。
+- 接頭辞は固定で、オプションは無い。
+- `headers.<name>.content`、callbacks 内・webhooks・`components.pathItems` の operation、どの operation からも参照されない `components.responses` は検査しない。
+- 同じ `$ref` 先のファイルを複数の operation が参照していても、報告は 1 件にまとめる。
+
+### `enum-schema-naming`
+
+`enum` を持つ schema と `Enum*` という名前の対応を検査する。`enum` は `Enum*` の名前で `components.schemas` に切り出す規約を前提とする。
+
+- 対象は `components.schemas` 直下に登録した schema だけ。判定は登録キーで行い、登録が外部ファイルへの `$ref` でも登録キーで判定する。
+- `enum` をルートに持つのに名前が `Enum` + 大文字 (ASCII) で始まらない場合と、名前が `Enum` + 大文字で始まるのにルートに `enum` が無い場合を報告する。`Enumeration`・`Enum1`・`Enumstatus` は `Enum` + 大文字ではないので、`enum` を持てば報告し、持たなければ報告しない。
+- 報告の位置は `components.schemas` の登録キー。
+- OAS 3.1 の `$defs`・`definitions` 直下の schema は対象外。
+- OAS 3.1 で `$ref` の隣に書いた `enum` は見ない。`$ref` の参照先だけを見る。
+
+### `no-inline-enum`
+
+`enum` を `$ref` を経ずにインラインで書くことを禁止する。`enum` は `Enum*` の schema に切り出して `$ref` で参照する。
+
+- `enum` を持つ schema のうち、`components.schemas` 直下に登録されたもの以外を報告する。`properties`・`items`・`allOf` 等の要素・`additionalProperties`・parameter・requestBody・response・header のインライン schema と、OAS 3.1 の `$defs` 配下が当たる。
+- `components.schemas` に登録していないファイルを `$ref` で参照し、そのルートに `enum` がある場合も報告する。規約上は登録すべきものとして扱う。
+- 報告の位置は `enum` キー。
+- `const` は対象外。
+- OAS 3.1 で `$ref` の隣に書いた `enum` は見ない。`$ref` の参照先だけを見る。
+
+### `schema-file-naming`
+
+root ファイルの `components.schemas` の登録を検査する。schema は 1 ファイルに 1 つ書き、`$ref` で登録する規約のもと、キー名とファイル名のずれを検出する。option は持たない。
+
+- 検査は 3 つ。キー名が PascalCase (`/^[A-Z][a-zA-Z0-9]+$/`。1 文字の名前は違反)、値が `$ref` だけのオブジェクト (インラインの schema は違反)、`$ref` がキー名と対応していること。
+- 許可する `$ref` は `./components/schemas/<キー名>.yaml` または `.yml` のみ。ディレクトリ違い・拡張子違い・キー名とのずれは違反。
+- 報告位置は、キー名の違反がキー、値の違反がエントリの値、`$ref` の違反が `$ref` の値。キー名の違反と、値・`$ref` の違反は独立に報告する。
+- 検査しないもの: root ファイル以外に置かれた `components.schemas`、`$ref` 先のファイルの実在、`components.schemas` 自体を `$ref` で別ファイルに出した場合 (`schemas: { $ref: ./schemas.yaml }`)。
 
 ## operationId の規約を差し替える
 
@@ -128,7 +220,7 @@ plugins:
 ## 動作環境
 
 > [!NOTE]
-> Redocly CLI 2.75.0 で動作を確認している。Redocly CLI 2.75.0 の `engines` は `>=22.12.0 || >=20.19.0 <21.0.0` で、Node 20.19 以上 21 未満、または 22.12 以上が必要。
+> `@redocly/openapi-core` 2.79.0 でテストしている。Redocly CLI 2.79.0 の `engines` は `>=22.12.0 || >=20.19.0 <21.0.0` で、Node 20.19 以上 21 未満、または 22.12 以上が必要。
 
 本パッケージは `@redocly/openapi-core` を必須の peerDependency (`>=2.0.0`) として宣言している。`@redocly/openapi-core` がインストールされていない場合は、利用側の devDependencies に追加する。
 

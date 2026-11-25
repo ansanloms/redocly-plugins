@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { bundle, createConfig } from "@redocly/openapi-core";
+import { bundle, createConfig, lint } from "@redocly/openapi-core";
 
 import plugin, { createPlugin, expectedOperationId, preprocessors } from "./index.ts";
 
@@ -343,6 +343,29 @@ test("bundle で Example の value の $ref を展開し、スキーマの prope
   assert.equal(typeof node.properties.examples.properties.self.$ref, "string");
 });
 
+test("lint で順の違う parameter だけを path item・operation・components の 3 箇所で報告する", async () => {
+  // plugin はパスで読み込ませる理由が上の bundle のテストと同じ。
+  const config = await createConfig({
+    plugins: [join(dirname(fileURLToPath(import.meta.url)), "index.ts")],
+    rules: { "ansanloms/key-order": "error" },
+  });
+  const problems = await lint({ ref: join(fixtures, "key-order/openapi.yaml"), config });
+
+  const found = problems.map((p) => ({
+    ruleId: p.ruleId,
+    pointer: p.location[0].pointer,
+    reportOnKey: p.location[0].reportOnKey,
+  }));
+  assert.deepEqual(
+    found.sort((a, b) => String(a.pointer).localeCompare(String(b.pointer))),
+    [
+      "#/components/parameters/Ng/name",
+      "#/paths/~1items/get/parameters/1/name",
+      "#/paths/~1items/parameters/1/name",
+    ].map((pointer) => ({ ruleId: "ansanloms/key-order", pointer, reportOnKey: true })),
+  );
+});
+
 test("リテラルセグメントと同名のパラメータも省略しない", () => {
   assert.equal(expectedOperationId("get", "/products/by/code/{code}"), "getProductsByCodeCode");
   assert.equal(expectedOperationId("get", "/by/code/{code}"), "getByCodeCode");
@@ -387,14 +410,20 @@ test("メソッドは小文字化する", () => {
   assert.equal(expectedOperationId("GET", "/carts"), "getCarts");
 });
 
-test("createPlugin は既定の規約で operation-id-naming・description-file-naming・examples-layout・no-unreferenced-files を持つ", () => {
+test("createPlugin は既定の規約で operation-id-naming・description-file-naming・schema-description・examples-layout・no-unreferenced-files・key-order・request-response-schema-naming・enum-schema-naming・no-inline-enum・schema-file-naming を持つ", () => {
   const p = createPlugin()();
   assert.equal(p.id, "ansanloms");
   assert.deepEqual(Object.keys(p.rules.oas3).sort(), [
     "description-file-naming",
+    "enum-schema-naming",
     "examples-layout",
+    "key-order",
+    "no-inline-enum",
     "no-unreferenced-files",
     "operation-id-naming",
+    "request-response-schema-naming",
+    "schema-description",
+    "schema-file-naming",
   ]);
   assert.deepEqual(Object.keys(p.preprocessors.oas3), ["inline-examples"]);
 });
@@ -406,4 +435,35 @@ test("createPlugin は id を差し替えられる", () => {
 test("default export を呼ぶと id が ansanloms の plugin になる", () => {
   assert.equal(typeof plugin, "function");
   assert.equal(plugin().id, "ansanloms");
+});
+
+test("lint で schema-description と description-file-naming が components.schemas 直下だけを検査する", async () => {
+  const config = await createConfig({
+    plugins: [join(dirname(fileURLToPath(import.meta.url)), "index.ts")],
+    rules: {
+      "ansanloms/schema-description": "error",
+      "ansanloms/description-file-naming": "error",
+    },
+  });
+  const ref = join(fixtures, "schema-description/openapi.yaml");
+  const expected = [
+    {
+      ruleId: "ansanloms/description-file-naming",
+      file: "Wrong.yaml",
+      pointer: "#/description/$ref",
+    },
+    { ruleId: "ansanloms/schema-description", file: "NoDescription.yaml", pointer: "#/" },
+  ];
+  // 同じ config で 2 回 lint しても、重複排除の Set が Root.enter でリセットされ同じ結果になる。
+  for (let i = 0; i < 2; i++) {
+    const problems = await lint({ ref, config });
+    const found = problems
+      .map((p) => ({
+        ruleId: p.ruleId,
+        file: basename(p.location[0]!.source.absoluteRef),
+        pointer: p.location[0]!.pointer,
+      }))
+      .sort((a, b) => a.ruleId.localeCompare(b.ruleId));
+    assert.deepEqual(found, expected, `lint ${i + 1} 回目`);
+  }
 });

@@ -1,0 +1,4 @@
+description: shared response with a media type ref
+content:
+  application/json:
+    $ref: ../media/Model.yaml

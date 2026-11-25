@@ -1,0 +1,13 @@
+description: shared response with a violation
+headers:
+  X-Model:
+    schema:
+      type: string
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/User.yaml
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/User.yaml

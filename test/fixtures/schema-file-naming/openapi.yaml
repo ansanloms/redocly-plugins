@@ -1,0 +1,15 @@
+openapi: 3.1.0
+info:
+  title: schema-file-naming
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Good:
+      $ref: ./components/schemas/Good.yaml
+    lowerCase:
+      $ref: ./components/schemas/lowerCase.yaml
+    Mismatch:
+      $ref: ./components/schemas/Other.yaml
+    Inline:
+      type: object

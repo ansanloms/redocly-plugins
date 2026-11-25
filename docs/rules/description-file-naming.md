@@ -18,7 +18,11 @@ operation と `components.schemas` 直下の schema を検査する。対象は 
 ### schema
 
 - 対象は `components.schemas` 直下の schema。`$defs`・`definitions` は対象外。
-- `<x>` を、schema の定義ファイル名 (拡張子なし) と比べる。schema が別ファイルのルートに在る場合はそのファイル名、root に直書きの schema と `./x.yaml#/User` のようなフラグメント付きの参照先は `components.schemas` のキー名と比べる。
+- `<x>` を、schema の定義の名前と比べる。比べる相手は schema の定義の位置で決まる。
+  - 別ファイルのルートに在る schema は、そのファイル名 (拡張子なし)。
+  - 検査している `schemas` の map の直下に定義が在る schema は、その定義のキー名。root に直書きの場合、`components` を別ファイルに分けた場合、`schemas` だけを別ファイルに分けた場合が当たる。
+  - 別のファイルの中を指すフラグメント付きの参照先 (`./x.yaml#/User`、`./x.yaml#/components/schemas/User` 等) は、登録した `components.schemas` のキー名。
+- 制限: 同じフラグメント付きの参照先を 2 つ以上のキーが指す場合は、先に訪問されたキーと比べる。結果はキーの並び順で変わりうる。
 
 報告メッセージは次のとおり。
 

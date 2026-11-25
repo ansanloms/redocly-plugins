@@ -2,8 +2,25 @@ import { parse } from "node:path";
 import { createTopLevelPathVisitor } from "./top-level-path.js";
 // `./descriptions/<x>.md` 形の $ref。<x> はサブディレクトリを含まないファイル名 (拡張子なし)。
 const DESCRIPTION_REF = /^\.\/descriptions\/([^/]+)\.md$/;
-// `#/components/schemas/<キー>` 形の pointer。<キー> は JSON Pointer のエスケープのまま。
-const SCHEMA_POINTER = /^#\/components\/schemas\/([^/]+)$/;
+/**
+ * 定義位置 `location` が、検査中の `schemas` の map (`mapLocation`) の直下 1 セグメントなら、そのキーを返す。
+ * 別ファイルを指す参照先など、それ以外の位置では undefined を返す。
+ */
+const keyUnderMap = (location, mapLocation) => {
+    if (!mapLocation || location.source.absoluteRef !== mapLocation.source.absoluteRef) {
+        return undefined;
+    }
+    // map がファイルのルート (`#/`) なら、直下は `#/<1 セグメント>`。
+    const prefix = mapLocation.pointer === "#/" ? "#/" : `${mapLocation.pointer}/`;
+    if (!location.pointer.startsWith(prefix)) {
+        return undefined;
+    }
+    const rest = location.pointer.slice(prefix.length);
+    if (rest === "" || rest.includes("/")) {
+        return undefined;
+    }
+    return rest.replaceAll("~1", "/").replaceAll("~0", "~");
+};
 /**
  * operation の description を外部 md ファイルに切り出している場合、そのファイル名 (拡張子なし) を
  * operationId と一致させる。
@@ -16,8 +33,12 @@ const SCHEMA_POINTER = /^#\/components\/schemas\/([^/]+)$/;
  * `components.schemas` 直下の schema も同様に検査する。
  *
  * - 対象は `description: { $ref: ./descriptions/<x>.md }` のみ。
- * - schema が別ファイルのルートに在れば、その定義ファイル名 (拡張子なし) と比べる。root に直書きの schema と
- *   フラグメント付きの参照先は、`components.schemas` のキー名と比べる。
+ * - schema が別ファイルのルートに在れば、その定義ファイル名 (拡張子なし) と比べる。
+ * - 定義が検査中の `schemas` の map (同じファイルの中) の直下に在れば、その定義のキー名と比べる。
+ *   root に直書き、`components` を別ファイルに分けた場合、`schemas` だけを別ファイルに分けた場合が当たる。
+ * - それ以外のフラグメント付きの参照先 (`./x.yaml#/User`) は、登録した `components.schemas` のキー名と比べる。
+ *   同じフラグメント付きの参照先を 2 つ以上のキーが指す場合は、先に訪問されたキーと比べる。
+ *   結果はキーの並び順で変わりうる。
  * - `$defs`・`definitions` は検査しない。
  */
 export const DescriptionFileNaming = () => {
@@ -54,12 +75,14 @@ export const DescriptionFileNaming = () => {
                     const actual = matched[1];
                     const isDefinitionFile = ctx.location.pointer === "#/";
                     // 別のキーからの $ref 経由で訪問されることがあるので、ctx.key (参照元) ではなく
-                    // schema が定義されている位置から期待値を導く。訪問の順序に依らない結果にする。
-                    const defined = SCHEMA_POINTER.exec(ctx.location.pointer);
+                    // schema が定義されている位置から期待値を導く。map の直下に無ければ ctx.key に落とす。
+                    const defined = isDefinitionFile
+                        ? undefined
+                        : keyUnderMap(ctx.location, ctx.parentLocations?.NamedSchemas);
                     const expected = isDefinitionFile
                         ? parse(ctx.location.source.absoluteRef).name
-                        : defined
-                            ? defined[1].replaceAll("~1", "/").replaceAll("~0", "~")
+                        : defined !== undefined
+                            ? defined
                             : String(ctx.key);
                     if (actual !== expected) {
                         const target = isDefinitionFile ? "定義ファイル名" : "スキーマ名";

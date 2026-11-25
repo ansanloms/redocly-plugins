@@ -1,6 +1,7 @@
 import { InlineExamples } from "./preprocessors/inline-examples.js";
 import { DescriptionFileNaming } from "./rules/description-file-naming.js";
 import { ExamplesLayout } from "./rules/examples-layout.js";
+import { KeyOrder } from "./rules/key-order.js";
 import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.js";
 import { createOperationIdNaming } from "./rules/operation-id-naming.js";
 import { SchemaDescription } from "./rules/schema-description.js";
@@ -39,6 +40,7 @@ export const createPlugin = (options = {}) => () => ({
             "schema-description": SchemaDescription,
             "examples-layout": ExamplesLayout,
             "no-unreferenced-files": NoUnreferencedFiles,
+            "key-order": KeyOrder,
         },
     },
 });

@@ -343,6 +343,29 @@ test("bundle で Example の value の $ref を展開し、スキーマの prope
   assert.equal(typeof node.properties.examples.properties.self.$ref, "string");
 });
 
+test("lint で順の違う parameter だけを path item・operation・components の 3 箇所で報告する", async () => {
+  // plugin はパスで読み込ませる理由が上の bundle のテストと同じ。
+  const config = await createConfig({
+    plugins: [join(dirname(fileURLToPath(import.meta.url)), "index.ts")],
+    rules: { "ansanloms/key-order": "error" },
+  });
+  const problems = await lint({ ref: join(fixtures, "key-order/openapi.yaml"), config });
+
+  const found = problems.map((p) => ({
+    ruleId: p.ruleId,
+    pointer: p.location[0].pointer,
+    reportOnKey: p.location[0].reportOnKey,
+  }));
+  assert.deepEqual(
+    found.sort((a, b) => String(a.pointer).localeCompare(String(b.pointer))),
+    [
+      "#/components/parameters/Ng/name",
+      "#/paths/~1items/get/parameters/1/name",
+      "#/paths/~1items/parameters/1/name",
+    ].map((pointer) => ({ ruleId: "ansanloms/key-order", pointer, reportOnKey: true })),
+  );
+});
+
 test("リテラルセグメントと同名のパラメータも省略しない", () => {
   assert.equal(expectedOperationId("get", "/products/by/code/{code}"), "getProductsByCodeCode");
   assert.equal(expectedOperationId("get", "/by/code/{code}"), "getByCodeCode");
@@ -387,12 +410,13 @@ test("メソッドは小文字化する", () => {
   assert.equal(expectedOperationId("GET", "/carts"), "getCarts");
 });
 
-test("createPlugin は既定の規約で operation-id-naming・description-file-naming・schema-description・examples-layout・no-unreferenced-files を持つ", () => {
+test("createPlugin は既定の規約で operation-id-naming・description-file-naming・schema-description・examples-layout・no-unreferenced-files・key-order を持つ", () => {
   const p = createPlugin()();
   assert.equal(p.id, "ansanloms");
   assert.deepEqual(Object.keys(p.rules.oas3).sort(), [
     "description-file-naming",
     "examples-layout",
+    "key-order",
     "no-unreferenced-files",
     "operation-id-naming",
     "schema-description",

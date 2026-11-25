@@ -6,6 +6,7 @@ import { ExamplesLayout } from "./rules/examples-layout.ts";
 import { KeyOrder } from "./rules/key-order.ts";
 import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.ts";
 import { createOperationIdNaming, type ExpectedOperationId } from "./rules/operation-id-naming.ts";
+import { RequestResponseSchemaNaming } from "./rules/request-response-schema-naming.ts";
 import { SchemaDescription } from "./rules/schema-description.ts";
 
 export type { ExpectedOperationId } from "./rules/operation-id-naming.ts";
@@ -58,6 +59,7 @@ export const createPlugin =
         "examples-layout": ExamplesLayout,
         "no-unreferenced-files": NoUnreferencedFiles,
         "key-order": KeyOrder,
+        "request-response-schema-naming": RequestResponseSchemaNaming,
       },
     },
   });

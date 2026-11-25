@@ -34,7 +34,7 @@ export const NoInlineEnum: Oas3Rule = () => {
           if (!registered.has(node)) {
             ctx.report({
               message:
-                "enum はインラインに書かず、Enum* の schema に切り出して $ref で参照してください。",
+                "enum はインラインに書かず、Enum + 大文字で始まる名前の schema に切り出して $ref で参照してください。",
               location,
             });
           }

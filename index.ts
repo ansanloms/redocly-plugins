@@ -2,7 +2,9 @@ import type { Oas3Preprocessor } from "@redocly/openapi-core";
 
 import { InlineExamples } from "./preprocessors/inline-examples.ts";
 import { DescriptionFileNaming } from "./rules/description-file-naming.ts";
+import { EnumSchemaNaming } from "./rules/enum-schema-naming.ts";
 import { ExamplesLayout } from "./rules/examples-layout.ts";
+import { NoInlineEnum } from "./rules/no-inline-enum.ts";
 import { NoUnreferencedFiles } from "./rules/no-unreferenced-files.ts";
 import { createOperationIdNaming, type ExpectedOperationId } from "./rules/operation-id-naming.ts";
 
@@ -54,6 +56,8 @@ export const createPlugin =
         "description-file-naming": DescriptionFileNaming,
         "examples-layout": ExamplesLayout,
         "no-unreferenced-files": NoUnreferencedFiles,
+        "enum-schema-naming": EnumSchemaNaming,
+        "no-inline-enum": NoInlineEnum,
       },
     },
   });

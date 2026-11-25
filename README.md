@@ -16,6 +16,8 @@ preprocessor も rule も、`redocly.yaml` で有効化したものだけが動�
 | rule         | `description-file-naming` |
 | rule         | `examples-layout`         |
 | rule         | `no-unreferenced-files`   |
+| rule         | `enum-schema-naming`      |
+| rule         | `no-inline-enum`          |
 
 ## 利用
 
@@ -38,6 +40,8 @@ rules:
   ansanloms/operation-id-naming: error
   ansanloms/description-file-naming: error
   ansanloms/examples-layout: error
+  ansanloms/enum-schema-naming: error
+  ansanloms/no-inline-enum: error
   ansanloms/no-unreferenced-files:
     severity: error
     dirs: [paths, components]
@@ -101,6 +105,26 @@ root ファイルと同じディレクトリの `examples/` 配下のファイ�
 > [!WARNING]
 > `examples` を `dirs` に入れてはいけない。example の `value` 内の `$ref` は参照として辿られないため、誤検出になる。
 > `externalValue` や `discriminator.mapping` だけで使われるファイルも参照として辿られず、未参照と報告される。
+
+### `enum-schema-naming`
+
+`enum` を持つ schema と `Enum*` という名前の対応を検査する。`enum` は `Enum*` の名前で `components.schemas` に切り出す規約を前提とする。
+
+- 対象は `components.schemas` 直下に登録した schema だけ。判定は登録キーで行い、登録が外部ファイルへの `$ref` でも登録キーで判定する。
+- `enum` をルートに持つのに名前が `Enum` + 大文字 (ASCII) で始まらない場合と、名前が `Enum` + 大文字で始まるのにルートに `enum` が無い場合を報告する。`Enumeration`・`Enum1`・`Enumstatus` は `Enum` + 大文字ではないので、`enum` を持てば報告し、持たなければ報告しない。
+- 報告の位置は `components.schemas` の登録キー。
+- OAS 3.1 の `$defs`・`definitions` 直下の schema は対象外。
+- OAS 3.1 で `$ref` の隣に書いた `enum` は見ない。`$ref` の参照先だけを見る。
+
+### `no-inline-enum`
+
+`enum` を `$ref` を経ずにインラインで書くことを禁止する。`enum` は `Enum*` の schema に切り出して `$ref` で参照する。
+
+- `enum` を持つ schema のうち、`components.schemas` 直下に登録されたもの以外を報告する。`properties`・`items`・`allOf` 等の要素・`additionalProperties`・parameter・requestBody・response・header のインライン schema と、OAS 3.1 の `$defs` 配下が当たる。
+- `components.schemas` に登録していないファイルを `$ref` で参照し、そのルートに `enum` がある場合も報告する。規約上は登録すべきものとして扱う。
+- 報告の位置は `enum` キー。
+- `const` は対象外。
+- OAS 3.1 で `$ref` の隣に書いた `enum` は見ない。`$ref` の参照先だけを見る。
 
 ## operationId の規約を差し替える
 

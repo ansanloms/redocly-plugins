@@ -35,26 +35,29 @@ const errorMessage = (e: unknown): string =>
   (e instanceof Error ? e.message : String(e)).split("\n")[0]!;
 
 /**
- * Example オブジェクトの `value` の中にあるファイル参照 (`$ref: ./x.yaml`) を、bundle 時にインライン展開する。
+ * Example オブジェクトの `value`・`dataValue` の中にあるファイル参照 (`$ref: ./x.yaml`) を、bundle 時にインライン展開する。
  *
- * - 展開するのは `value` の中の `$ref` で、`#` を含まない・URL でない・絶対パスでない
+ * - 展開するのは `value`・`dataValue` の中の `$ref` で、`#` を含まない・URL でない・絶対パスでない
  *   `.yaml`・`.yml` への相対パスだけ。参照先は参照元のファイルのディレクトリを基準に解決し、
  *   参照先の中の `$ref` も参照先のファイルのディレクトリを基準に再帰的に展開する。
  * - `#` を含まない・URL でない・絶対パスでない相対パスで、拡張子が `.yaml`・`.yml` でない `$ref` (`.pdf`・`.json` 等) は、
- *   Redocly は `value` の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため、
+ *   Redocly は `value`・`dataValue` の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため、
  *   参照先が通常ファイルとして在れば `$ref` キーを除く。兄弟のキーとその順序は残し、
  *   `$ref` だけのオブジェクトは `{}` になる。報告はしない。参照先のファイルの中に書かれた参照も同じ。
- *   参照先が無ければ (ディレクトリ・stat の失敗を含む) `value` の位置に報告し、`$ref` を残す。
+ *   参照先が無ければ (ディレクトリ・stat の失敗を含む) 対象の欄の位置に報告し、`$ref` を残す。
  * - それ以外の `$ref` (URL・絶対パス・`#` を含む参照) は展開せず、そのまま残す。
  * - `$ref` だけのオブジェクトは参照先の値 (配列・スカラーを含む) で置き換える。
  *   兄弟のキーがあるときは参照先 (オブジェクトのみ) と合成し、同名のキーは兄弟のキーが勝つ。
  * - 循環参照・読み込み失敗・非 YAML の参照先が無い場合・兄弟のキーがあるのに参照先がオブジェクトでない場合は、
- *   `value` の位置に報告し、その `$ref` は展開しない。報告には `$ref` の文字列・参照元と参照先のファイルを含め、
+ *   対象の欄の位置に報告し、その `$ref` は展開しない。報告には `$ref` の文字列・参照元と参照先のファイルを含め、
  *   パスは Example のファイルのディレクトリからの相対パスで示す。
  * - 参照先のファイルの中に展開せず残る相対パスの `$ref` は、Example のファイルのディレクトリを基準にしたパスへ書き直す
  *   (bundle の中では Example のファイルが基準になるため)。URL・絶対パス・`#` で始まる参照は書き直さない。
  * - Example オブジェクトそのものが `$ref` の場合は Redocly が解決するため対象外。
  *   スキーマの `examples` は Example オブジェクトではないため対象外。
+ * - `serializedValue`・`externalValue` には触れない。
+ * - `dataValue` は OAS 3.2 の欄。3.0/3.1 の文書でも `dataValue` があれば展開する
+ *   (3.0/3.1 では仕様外の欄で、Redocly の struct rule が報告する)。
  */
 export const InlineExamples: Oas3Preprocessor = () => {
   /** 絶対パス -> パース結果。同じファイルを 1 度だけ読む。 */
@@ -91,7 +94,7 @@ export const InlineExamples: Oas3Preprocessor = () => {
 
   /**
    * 常に新しい配列・オブジェクトを組み立てて返す (キャッシュした値を共有しない)。
-   * `from` は `value` が書かれているファイル、`exampleDir` は Example のファイルのディレクトリ。
+   * `from` は対象の欄が書かれているファイル、`exampleDir` は Example のファイルのディレクトリ。
    */
   const expand = (
     value: unknown,
@@ -190,18 +193,20 @@ export const InlineExamples: Oas3Preprocessor = () => {
     },
     Example: {
       leave(node, ctx) {
-        const value: unknown = node.value;
-        if (typeof value !== "object" || value === null) {
-          return;
-        }
+        for (const field of ["value", "dataValue"] as const) {
+          const value: unknown = node[field];
+          if (typeof value !== "object" || value === null) {
+            continue;
+          }
 
-        const problems: string[] = [];
-        const from = ctx.location.source.absoluteRef;
-        const expanded = expand(value, from, dirname(from), [from], problems);
-        for (const message of new Set(problems)) {
-          ctx.report({ message, location: ctx.location.child(["value"]) });
+          const problems: string[] = [];
+          const from = ctx.location.source.absoluteRef;
+          const expanded = expand(value, from, dirname(from), [from], problems);
+          for (const message of new Set(problems)) {
+            ctx.report({ message, location: ctx.location.child([field]) });
+          }
+          node[field] = expanded;
         }
-        node.value = expanded;
       },
     },
   };

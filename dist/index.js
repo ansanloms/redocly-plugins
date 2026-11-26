@@ -1,4 +1,3 @@
-import { InlineDataValue } from "./preprocessors/inline-datavalue.js";
 import { InlineExamples } from "./preprocessors/inline-examples.js";
 import { DescriptionFileNaming } from "./rules/description-file-naming.js";
 import { EnumSchemaNaming } from "./rules/enum-schema-naming.js";
@@ -12,7 +11,6 @@ import { SchemaDescription } from "./rules/schema-description.js";
 import { SchemaFileNaming } from "./rules/schema-file-naming.js";
 export const preprocessors = {
     "inline-examples": InlineExamples,
-    "inline-datavalue": InlineDataValue,
 };
 const toPascalCase = (segment) => segment
     .split(/[^A-Za-z0-9]/)

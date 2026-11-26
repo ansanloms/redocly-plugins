@@ -1,6 +1,5 @@
 import type { Oas3Preprocessor } from "@redocly/openapi-core";
 
-import { InlineDataValue } from "./preprocessors/inline-datavalue.ts";
 import { InlineExamples } from "./preprocessors/inline-examples.ts";
 import { DescriptionFileNaming } from "./rules/description-file-naming.ts";
 import { EnumSchemaNaming } from "./rules/enum-schema-naming.ts";
@@ -17,7 +16,6 @@ export type { ExpectedOperationId } from "./rules/operation-id-naming.ts";
 
 export const preprocessors: Record<string, Oas3Preprocessor> = {
   "inline-examples": InlineExamples,
-  "inline-datavalue": InlineDataValue,
 };
 
 const toPascalCase = (segment: string): string =>

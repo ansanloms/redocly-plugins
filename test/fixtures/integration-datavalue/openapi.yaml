@@ -15,7 +15,7 @@ paths:
                 event:
                   dataValue:
                     $ref: ./examples/ResponseGetEvents/event.yaml
-                  serializedValue: "data: {}"
+                  serializedValue: 'data: {"id":1,"type":"created","payload":{"name":"part"}}'
                 legacy:
                   value:
                     $ref: ./examples/ResponseGetEvents/event.yaml

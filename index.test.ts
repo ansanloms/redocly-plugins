@@ -16,7 +16,7 @@ type Report = { message: string; location: unknown };
 
 const visitor = preprocessors["inline-examples"]({});
 
-/** 偽の ctx で Example.leave を呼び、node.value と報告を返す。 */
+/** 偽の ctx で、field 引数 (既定 "value") の Example の欄に値を入れて Example.leave を呼び、node と報告を返す。 */
 const run = (value: unknown, file = "example.yaml", v = visitor, field = "value") => {
   const reports: Report[] = [];
   const node = value === undefined ? {} : { [field]: value };
@@ -343,51 +343,27 @@ test("bundle で Example の value の $ref を展開し、スキーマの prope
   assert.equal(typeof node.properties.examples.properties.self.$ref, "string");
 });
 
-const dataValueVisitor = preprocessors["inline-datavalue"]({});
-
-test("inline-datavalue は dataValue の中の $ref を展開する", () => {
-  const { node, reports } = run(
-    { $ref: "./obj.yaml" },
-    "example.yaml",
-    dataValueVisitor,
-    "dataValue",
-  );
+test("inline-examples は dataValue の中の $ref を展開する", () => {
+  const { node, reports } = run({ $ref: "./obj.yaml" }, "example.yaml", visitor, "dataValue");
   assert.deepEqual(node.dataValue, run({ $ref: "./obj.yaml" }).node.value);
   assert.notDeepEqual(node.dataValue, { $ref: "./obj.yaml" });
   assert.deepEqual(reports, []);
 });
 
-test("inline-datavalue は報告位置を dataValue にする", () => {
-  const { node, reports } = run(
-    { $ref: "./no-such.yaml" },
-    "example.yaml",
-    dataValueVisitor,
-    "dataValue",
-  );
+test("inline-examples は報告位置を dataValue にする", () => {
+  const { node, reports } = run({ $ref: "./no-such.yaml" }, "example.yaml", visitor, "dataValue");
   assert.deepEqual(node.dataValue, { $ref: "./no-such.yaml" });
   assert.equal(reports.length, 1);
   assert.deepEqual(reports[0]!.location, { pointer: ["dataValue"] });
 });
 
-test("inline-datavalue は value と serializedValue に触れない", () => {
-  const value = { $ref: "./obj.yaml" };
+test("inline-examples は serializedValue を残し、value と dataValue の両方を展開する", () => {
   const serializedValue = 'data: {"$ref": "./obj.yaml"}';
-  const node = { value, serializedValue, dataValue: { $ref: "./obj.yaml" } };
-  const ctx = {
-    location: {
-      source: { absoluteRef: resolve(inlineFixtures, "example.yaml") },
-      child: (pointer: string[]) => ({ pointer }),
-    },
-    report: () => {},
+  const node = {
+    value: { $ref: "./obj.yaml" },
+    serializedValue,
+    dataValue: { $ref: "./obj.yaml" },
   };
-  (dataValueVisitor.Example as { leave: (...args: unknown[]) => void }).leave(node, ctx);
-  assert.deepEqual(node.value, { $ref: "./obj.yaml" });
-  assert.equal(node.serializedValue, serializedValue);
-  assert.notDeepEqual(node.dataValue, { $ref: "./obj.yaml" });
-});
-
-test("inline-examples は dataValue に触れない", () => {
-  const node = { value: { $ref: "./obj.yaml" }, dataValue: { $ref: "./obj.yaml" } };
   const ctx = {
     location: {
       source: { absoluteRef: resolve(inlineFixtures, "example.yaml") },
@@ -396,14 +372,16 @@ test("inline-examples は dataValue に触れない", () => {
     report: () => {},
   };
   (visitor.Example as { leave: (...args: unknown[]) => void }).leave(node, ctx);
+  assert.equal(node.serializedValue, serializedValue);
   assert.notDeepEqual(node.value, { $ref: "./obj.yaml" });
-  assert.deepEqual(node.dataValue, { $ref: "./obj.yaml" });
+  assert.notDeepEqual(node.dataValue, { $ref: "./obj.yaml" });
+  assert.deepEqual(node.dataValue, node.value);
 });
 
-test("bundle で OAS 3.2 の Example の dataValue の $ref を展開し、value は展開しない", async () => {
+test("bundle で OAS 3.2 の Example の dataValue と value の $ref を展開する", async () => {
   const config = await createConfig({
     plugins: [join(dirname(fileURLToPath(import.meta.url)), "index.ts")],
-    preprocessors: { "ansanloms/inline-datavalue": "on" },
+    preprocessors: { "ansanloms/inline-examples": "on" },
   });
   const { bundle: result, problems } = await bundle({
     ref: join(fixtures, "integration-datavalue/openapi.yaml"),
@@ -414,8 +392,11 @@ test("bundle で OAS 3.2 の Example の dataValue の $ref を展開し、value
   const doc = result.parsed as any;
   const examples = doc.paths["/events"].get.responses["200"].content["text/event-stream"].examples;
   assert.deepEqual(examples.event.dataValue, { id: 1, type: "created", payload: { name: "part" } });
-  assert.equal(examples.event.serializedValue, "data: {}");
-  assert.equal(examples.legacy.value.$ref, "./examples/ResponseGetEvents/event.yaml");
+  assert.equal(
+    examples.event.serializedValue,
+    'data: {"id":1,"type":"created","payload":{"name":"part"}}',
+  );
+  assert.deepEqual(examples.legacy.value, { id: 1, type: "created", payload: { name: "part" } });
 });
 
 test("lint で順の違う parameter だけを path item・operation・components の 3 箇所で報告する", async () => {
@@ -500,7 +481,7 @@ test("createPlugin は既定の規約で operation-id-naming・description-file-
     "schema-description",
     "schema-file-naming",
   ]);
-  assert.deepEqual(Object.keys(p.preprocessors.oas3), ["inline-examples", "inline-datavalue"]);
+  assert.deepEqual(Object.keys(p.preprocessors.oas3), ["inline-examples"]);
 });
 
 test("createPlugin は id を差し替えられる", () => {

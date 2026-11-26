@@ -12,7 +12,6 @@ preprocessor も rule も、`redocly.yaml` で有効化したものだけが動�
 | 種別         | 名前                                                                               |
 | ------------ | ---------------------------------------------------------------------------------- |
 | preprocessor | [`inline-examples`](./docs/preprocessors/inline-examples.md)                       |
-| preprocessor | [`inline-datavalue`](./docs/preprocessors/inline-datavalue.md)                     |
 | rule         | [`operation-id-naming`](./docs/rules/operation-id-naming.md)                       |
 | rule         | [`description-file-naming`](./docs/rules/description-file-naming.md)               |
 | rule         | [`schema-description`](./docs/rules/schema-description.md)                         |
@@ -41,7 +40,6 @@ plugins:
   - "@ansanloms/redocly-plugins"
 preprocessors:
   ansanloms/inline-examples: on
-  ansanloms/inline-datavalue: on
 rules:
   ansanloms/operation-id-naming: error
   ansanloms/description-file-naming: error
@@ -59,7 +57,7 @@ rules:
 
 ## rule と preprocessor
 
-各 rule の検査内容・オプション・違反例と適合例は [rule 一覧](./docs/rules/README.md)にまとめている。preprocessor は [`inline-examples`](./docs/preprocessors/inline-examples.md) と [`inline-datavalue`](./docs/preprocessors/inline-datavalue.md) を参照。
+各 rule の検査内容・オプション・違反例と適合例は [rule 一覧](./docs/rules/README.md)にまとめている。preprocessor `inline-examples` は [docs/preprocessors/inline-examples.md](./docs/preprocessors/inline-examples.md) を参照。
 
 ## operationId の規約を差し替える
 

@@ -1,12 +1,12 @@
 import { type Oas3Preprocessor } from "@redocly/openapi-core";
 /**
- * Example オブジェクトの対象の欄 (`value` または `dataValue`) の中にあるファイル参照 (`$ref: ./x.yaml`) を、bundle 時にインライン展開する。
+ * Example オブジェクトの `value`・`dataValue` の中にあるファイル参照 (`$ref: ./x.yaml`) を、bundle 時にインライン展開する。
  *
- * - 展開するのは対象の欄の中の `$ref` で、`#` を含まない・URL でない・絶対パスでない
+ * - 展開するのは `value`・`dataValue` の中の `$ref` で、`#` を含まない・URL でない・絶対パスでない
  *   `.yaml`・`.yml` への相対パスだけ。参照先は参照元のファイルのディレクトリを基準に解決し、
  *   参照先の中の `$ref` も参照先のファイルのディレクトリを基準に再帰的に展開する。
  * - `#` を含まない・URL でない・絶対パスでない相対パスで、拡張子が `.yaml`・`.yml` でない `$ref` (`.pdf`・`.json` 等) は、
- *   Redocly は対象の欄の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため、
+ *   Redocly は `value`・`dataValue` の中の `$ref` を解決しないので、YAML として展開できないファイル参照を bundle 後の文書に残さないため、
  *   参照先が通常ファイルとして在れば `$ref` キーを除く。兄弟のキーとその順序は残し、
  *   `$ref` だけのオブジェクトは `{}` になる。報告はしない。参照先のファイルの中に書かれた参照も同じ。
  *   参照先が無ければ (ディレクトリ・stat の失敗を含む) 対象の欄の位置に報告し、`$ref` を残す。
@@ -20,9 +20,8 @@ import { type Oas3Preprocessor } from "@redocly/openapi-core";
  *   (bundle の中では Example のファイルが基準になるため)。URL・絶対パス・`#` で始まる参照は書き直さない。
  * - Example オブジェクトそのものが `$ref` の場合は Redocly が解決するため対象外。
  *   スキーマの `examples` は Example オブジェクトではないため対象外。
- *
- * @param field 展開する欄。`value` または OAS 3.2 の `dataValue`。
+ * - `serializedValue`・`externalValue` には触れない。
+ * - `dataValue` は OAS 3.2 の欄。3.0/3.1 の文書でも `dataValue` があれば展開する
+ *   (3.0/3.1 では仕様外の欄で、Redocly の struct rule が報告する)。
  */
-export declare const createInlineExampleField: (field: "value" | "dataValue") => Oas3Preprocessor;
-/** Example の `value` を展開する。詳細は `createInlineExampleField` を参照。 */
 export declare const InlineExamples: Oas3Preprocessor;

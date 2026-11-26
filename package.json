@@ -1,6 +1,6 @@
 {
   "name": "@ansanloms/redocly-plugins",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Redocly CLI plugin bundling a preprocessor and rules",
   "keywords": [
     "openapi",

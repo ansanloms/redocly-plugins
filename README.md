@@ -28,7 +28,7 @@ preprocessor も rule も、`redocly.yaml` で有効化したものだけが動�
 インストール:
 
 ```sh
-npm install -D github:ansanloms/redocly-plugins#0.3.0
+npm install -D github:ansanloms/redocly-plugins#0.4.0
 ```
 
 `redocly.yaml` の `plugins:` にパッケージ名を書いて参照する。Redocly CLI の plugin ローダは、設定ファイルからの相対パスにファイルが無ければパッケージ名として node_modules から解決する。

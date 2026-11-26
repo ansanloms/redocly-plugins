@@ -41,7 +41,7 @@ paths/
 ```
 
 > [!WARNING]
-> Example の `value` から参照するファイルの置き場を `dirs` に入れてはいけない。`examples/` に限らず、`components/examples/` を含む。`value` 内の `$ref` は参照として辿られないため、誤検出になる。
+> Example の `value` や `dataValue` から参照するファイルの置き場を `dirs` に入れてはいけない。`examples/` に限らず、`components/examples/` を含む。`value`・`dataValue` 内の `$ref` は参照として辿られないため、誤検出になる。
 > `externalValue` や `discriminator.mapping` だけで使われるファイルも参照として辿られず、未参照と報告される。
 
 ## オプション
@@ -62,7 +62,7 @@ rules:
 
 ## 使わない場合
 
-`$ref` で辿れないファイルを意図して置く運用や、検査したいディレクトリが Example の `value` からだけ参照される運用では、この rule を有効にしない。
+`$ref` で辿れないファイルを意図して置く運用や、検査したいディレクトリが Example の `value` や `dataValue` からだけ参照される運用では、この rule を有効にしない。
 
 ## 関連する rule
 

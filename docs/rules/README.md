@@ -27,4 +27,4 @@
 | [examples-layout](./examples-layout.md)             | `examples/` 配下のファイルを `<スキーマ名>/<ファイル名>.yaml` に置くことを要求する |
 | [no-unreferenced-files](./no-unreferenced-files.md) | どこからも `$ref` されていないファイルを置くことを禁止する                         |
 
-preprocessor は [inline-examples](../preprocessors/inline-examples.md) を参照。
+preprocessor は [inline-examples](../preprocessors/inline-examples.md) と [inline-datavalue](../preprocessors/inline-datavalue.md) を参照。
